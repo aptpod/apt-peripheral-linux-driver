@@ -57,7 +57,7 @@ cd kunit && ./run_test.sh
 
 ## Usage
 
-For information on how to use the peripheral devices, see [doc](./doc/README.md).
+For information on how to use the peripheral devices, see [docs](./docs/README.md).
 
 ## License
 

@@ -58,7 +58,7 @@ cd kunit && ./run_test.sh
 
 ## Usage
 
-ペリフェラルごとの利用方法については、[doc](./doc/README.md)を参照してください。
+ペリフェラルごとの利用方法については、[docs](./docs/README.md)を参照してください。
 
 ## License
 
