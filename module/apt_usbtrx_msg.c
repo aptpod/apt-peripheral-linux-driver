@@ -13,6 +13,7 @@
 
 /*!
  * @brief parse
+ * @note Use *MSG_RL() in this function to avoid hangs.
  */
 int apt_usbtrx_msg_parse(u8 *data, int data_size, apt_usbtrx_msg_t *msg)
 {
@@ -24,14 +25,14 @@ int apt_usbtrx_msg_parse(u8 *data, int data_size, apt_usbtrx_msg_t *msg)
 	int n = 0;
 
 	if (msg == NULL) {
-		EMSG("msg is NULL");
+		EMSG_RL("msg is NULL");
 		return RESULT_Failure;
 	}
 
 	sob = data[n];
 	if (sob != APT_USBTRX_MSG_SOB) {
 #if 0
-		DMSG("start data is not SOB, <0x%02x>", sob);
+		DMSG_RL("start data is not SOB, <0x%02x>", sob);
 #endif
 		return RESULT_Failure;
 	}
@@ -40,21 +41,21 @@ int apt_usbtrx_msg_parse(u8 *data, int data_size, apt_usbtrx_msg_t *msg)
 	length = data[n];
 	if (length < APT_USBTRX_CMD_MIN_LENGTH) {
 #if 0
-		EMSG("paket length is under min cmd length, <length:%d>", length);
+		EMSG_RL("paket length is under min cmd length, <length:%d>", length);
 #endif
 		return RESULT_Failure;
 	}
 	if (length > APT_USBTRX_MSG_MAX_LENGTH) {
-		EMSG("packet length is over max msg length, <length:%d>", length);
+		EMSG_RL("packet length is over max msg length, <length:%d>", length);
 		return RESULT_Failure;
 	}
 	if (length > APT_USBTRX_CMD_MAX_LENGTH) {
-		EMSG("paket length is over max cmd length, <length:%d>", length);
+		EMSG_RL("paket length is over max cmd length, <length:%d>", length);
 		return RESULT_Failure;
 	}
 	if (length > data_size) {
 #if 0
-		EMSG("data size is not enough, <length:%d> data size=%d", length, data_size);
+		EMSG_RL("data size is not enough, <length:%d> data size=%d", length, data_size);
 #endif
 		return RESULT_NotEnough;
 	}
@@ -68,7 +69,7 @@ int apt_usbtrx_msg_parse(u8 *data, int data_size, apt_usbtrx_msg_t *msg)
 
 	payload_size = APT_USBTRX_MSG_LENGTH_TO_PAYLOAD(length);
 	if (payload_size > APT_USBTRX_MSG_LENGTH_TO_PAYLOAD(APT_USBTRX_CMD_MAX_LENGTH)) {
-		EMSG("length is over max payload size, <payload_size:%d>", payload_size);
+		EMSG_RL("length is over max payload size, <payload_size:%d>", payload_size);
 		return RESULT_Failure;
 	}
 	memcpy(msg->payload, &data[n], payload_size);
@@ -76,7 +77,7 @@ int apt_usbtrx_msg_parse(u8 *data, int data_size, apt_usbtrx_msg_t *msg)
 
 	eob = data[n];
 	if (eob != APT_USBTRX_MSG_EOB) {
-		EMSG("end data is not EOB, <0x%02x>", eob);
+		EMSG_RL("end data is not EOB, <0x%02x>", eob);
 		return RESULT_Failure;
 	}
 	n = n + 1;

@@ -8,7 +8,6 @@
 #include <linux/uaccess.h>
 
 #include "ep1_ag08a_fops.h"
-#include "ep1_ag08a_cmd.h"
 
 static int count_bits(int n)
 {
@@ -139,20 +138,7 @@ long ep1_ag08a_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case EP1_AG08A_IOCTL_SET_ANALOG_INPUT: {
 		ep1_ag08a_ioctl_set_analog_input_t param;
 		ep1_ag08a_msg_set_analog_input_t cfg;
-		bool start = true;
-		bool success = false;
 		int ch = 0;
-
-		/* input stop check */
-		result = ep1_ag08a_is_device_input_start(dev, &start);
-		if (result != RESULT_Success) {
-			EMSG("ep1_ag08a_is_device_input_start().. Error");
-			return -EIO;
-		}
-		if (start) {
-			EMSG("stop device, then set analog input");
-			return -EBUSY;
-		}
 
 		result = copy_from_user(&param, (void __user *)arg, sizeof(ep1_ag08a_ioctl_set_analog_input_t));
 		if (result != 0) {
@@ -168,21 +154,15 @@ long ep1_ag08a_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			DMSG("%s(): ch=%d, vmin=%d, vax=%d", __func__, ch, cfg.vmin[ch], cfg.vmax[ch]);
 		}
 
-		result = ep1_ag08a_set_analog_input(dev, &cfg, &success);
+		result = ep1_ag08a_set_device_input(dev, &cfg);
 		if (result != RESULT_Success) {
-			EMSG("ep1_ag08a_set_analog_input().. Error");
-			return -EIO;
-		}
-		if (success != true) {
-			EMSG("ep1_ag08a_set_analog_input().. Error, Exec failed");
 			return -EIO;
 		}
 		break;
 	}
 	case EP1_AG08A_IOCTL_CONTROL_ANALOG_INPUT: {
 		ep1_ag08a_ioctl_control_analog_input_t param;
-		ep1_ag08a_msg_control_analog_input_t cfg;
-		bool success = false;
+		ep1_ag08a_msg_control_analog_input_t ctrl;
 		bool start = false;
 		int ch = 0;
 
@@ -193,9 +173,9 @@ long ep1_ag08a_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 
 		for (ch = 0; ch < EP1_AG08A_CH_NUM; ch++) {
-			cfg.start[ch] = param.start[ch];
-			DMSG("%s(): start[%d]=%d", __func__, ch, cfg.start[ch]);
-			if (cfg.start[ch]) {
+			ctrl.start[ch] = param.start[ch];
+			DMSG("%s(): start[%d]=%d", __func__, ch, ctrl.start[ch]);
+			if (ctrl.start[ch]) {
 				start = true;
 			}
 		}
@@ -208,13 +188,8 @@ long ep1_ag08a_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			}
 		}
 
-		result = ep1_ag08a_control_analog_input(dev, &cfg, &success);
+		result = ep1_ag08a_control_device_input(dev, &ctrl);
 		if (result != RESULT_Success) {
-			EMSG("ep1_ag08a_control_analog_input().. Error");
-			return -EIO;
-		}
-		if (success != true) {
-			EMSG("ep1_ag08a_control_analog_input().. Error, Exec failed");
 			return -EIO;
 		}
 		break;
@@ -222,19 +197,6 @@ long ep1_ag08a_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case EP1_AG08A_IOCTL_SET_ANALOG_OUTPUT: {
 		ep1_ag08a_ioctl_set_analog_output_t param;
 		ep1_ag08a_msg_set_analog_output_t cfg;
-		bool start = true;
-		bool success = false;
-
-		/* output stop check */
-		result = ep1_ag08a_is_device_output_start(dev, &start);
-		if (result != RESULT_Success) {
-			EMSG("ep1_ag08a_is_device_output_start().. Error");
-			return -EIO;
-		}
-		if (start) {
-			EMSG("stop device, then set analog output");
-			return -EBUSY;
-		}
 
 		result = copy_from_user(&param, (void __user *)arg, sizeof(ep1_ag08a_ioctl_set_analog_output_t));
 		if (result != 0) {
@@ -248,21 +210,15 @@ long ep1_ag08a_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		DMSG("%s(): waveform_type=%d voltage=%d frequency=%d", __func__, cfg.waveform_type, cfg.voltage,
 		     cfg.frequency);
 
-		result = ep1_ag08a_set_analog_output(dev, &cfg, &success);
+		result = ep1_ag08a_set_device_output(dev, &cfg);
 		if (result != RESULT_Success) {
-			EMSG("ep1_ag08a_set_analog_output().. Error");
-			return -EIO;
-		}
-		if (success != true) {
-			EMSG("ep1_ag08a_set_analog_output().. Error, Exec failed");
 			return -EIO;
 		}
 		break;
 	}
 	case EP1_AG08A_IOCTL_CONTROL_ANALOG_OUTPUT: {
 		ep1_ag08a_ioctl_control_analog_output_t param;
-		ep1_ag08a_msg_control_analog_output_t cfg;
-		bool success = false;
+		ep1_ag08a_msg_control_analog_output_t ctrl;
 
 		result = copy_from_user(&param, (void __user *)arg, sizeof(ep1_ag08a_ioctl_control_analog_output_t));
 		if (result != 0) {
@@ -270,16 +226,11 @@ long ep1_ag08a_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			return -EFAULT;
 		}
 
-		cfg.start = param.start;
-		DMSG("%s(): start=%d", __func__, cfg.start);
+		ctrl.start = param.start;
+		DMSG("%s(): start=%d", __func__, ctrl.start);
 
-		result = ep1_ag08a_control_analog_output(dev, &cfg, &success);
+		result = ep1_ag08a_control_device_output(dev, &ctrl);
 		if (result != RESULT_Success) {
-			EMSG("ep1_ag08a_control_analog_output().. Error");
-			return -EIO;
-		}
-		if (success != true) {
-			EMSG("ep1_ag08a_control_analog_output().. Error, Exec failed");
 			return -EIO;
 		}
 		break;
@@ -290,6 +241,141 @@ long ep1_ag08a_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	}
 
 	return 0;
+}
+
+/*!
+ * @brief set device input config
+ */
+int ep1_ag08a_set_device_input(apt_usbtrx_dev_t *dev, ep1_ag08a_msg_set_analog_input_t *cfg)
+{
+	int result;
+	bool start = true;
+	bool success = false;
+
+	/* input stop check */
+	result = ep1_ag08a_is_device_input_start(dev, &start);
+	if (result != RESULT_Success) {
+		EMSG("ep1_ag08a_is_device_input_start().. Error");
+		return RESULT_Failure;
+	}
+	if (start) {
+		EMSG("stop device, then set analog input");
+		return RESULT_Failure;
+	}
+
+	result = ep1_ag08a_set_analog_input(dev, cfg, &success);
+	if (result != RESULT_Success) {
+		EMSG("ep1_ag08a_set_analog_input().. Error");
+		return RESULT_Failure;
+	}
+	if (success != true) {
+		EMSG("ep1_ag08a_set_analog_input().. Error, Exec failed");
+		return RESULT_Failure;
+	}
+
+	return RESULT_Success;
+}
+
+/*!
+ * @brief set device output config
+ */
+int ep1_ag08a_set_device_output(apt_usbtrx_dev_t *dev, ep1_ag08a_msg_set_analog_output_t *cfg)
+{
+	int result;
+	bool start = true;
+	bool success = false;
+
+	/* output stop check */
+	result = ep1_ag08a_is_device_output_start(dev, &start);
+	if (result != RESULT_Success) {
+		EMSG("ep1_ag08a_is_device_output_start().. Error");
+		return RESULT_Failure;
+	}
+	if (start) {
+		EMSG("stop device, then set analog output");
+		return RESULT_Failure;
+	}
+
+	result = ep1_ag08a_set_analog_output(dev, cfg, &success);
+	if (result != RESULT_Success) {
+		EMSG("ep1_ag08a_set_analog_output().. Error");
+		return RESULT_Failure;
+	}
+	if (success != true) {
+		EMSG("ep1_ag08a_set_analog_output().. Error, Exec failed");
+		return RESULT_Failure;
+	}
+
+	return RESULT_Success;
+}
+
+/*!
+ * @brief control device input
+ */
+int ep1_ag08a_control_device_input(apt_usbtrx_dev_t *dev, ep1_ag08a_msg_control_analog_input_t *ctrl)
+{
+	int result;
+	bool success = false;
+
+	result = ep1_ag08a_control_analog_input(dev, ctrl, &success);
+	if (result != RESULT_Success) {
+		EMSG("ep1_ag08a_control_analog_input().. Error");
+		return RESULT_Failure;
+	}
+	if (success != true) {
+		EMSG("ep1_ag08a_control_analog_input().. Error, Exec failed");
+		return RESULT_Failure;
+	}
+
+	return RESULT_Success;
+}
+
+/*!
+ * @brief control device output
+ */
+int ep1_ag08a_control_device_output(apt_usbtrx_dev_t *dev, ep1_ag08a_msg_control_analog_output_t *ctrl)
+{
+	int result;
+	bool success = false;
+
+	result = ep1_ag08a_control_analog_output(dev, ctrl, &success);
+	if (result != RESULT_Success) {
+		EMSG("ep1_ag08a_control_analog_output().. Error");
+		return RESULT_Failure;
+	}
+	if (success != true) {
+		EMSG("ep1_ag08a_control_analog_output().. Error, Exec failed");
+		return RESULT_Failure;
+	}
+
+	return RESULT_Success;
+}
+
+/*!
+ * @brief stop device input
+ */
+int ep1_ag08a_stop_device_input(apt_usbtrx_dev_t *dev)
+{
+	ep1_ag08a_msg_control_analog_input_t ctrl;
+	int ch;
+
+	for (ch = 0; ch < EP1_AG08A_CH_NUM; ch++) {
+		ctrl.start[ch] = false;
+	}
+
+	return ep1_ag08a_control_device_input(dev, &ctrl);
+}
+
+/*!
+ * @brief stop device output
+ */
+int ep1_ag08a_stop_device_output(apt_usbtrx_dev_t *dev)
+{
+	ep1_ag08a_msg_control_analog_output_t ctrl;
+
+	ctrl.start = false;
+
+	return ep1_ag08a_control_device_output(dev, &ctrl);
 }
 
 /*!
@@ -346,6 +432,16 @@ int ep1_ag08a_is_device_output_start(apt_usbtrx_dev_t *dev, bool *start)
  */
 int ep1_ag08a_open(apt_usbtrx_dev_t *dev)
 {
+	ep1_ag08a_unique_data_t *unique_data = get_unique_data(dev);
+	int if_type = atomic_read(&unique_data->if_type);
+
+	if (if_type != EP1_AG08A_IF_TYPE_NONE) {
+		EMSG("Device is already in use");
+		return -EBUSY;
+	}
+
+	atomic_set(&unique_data->if_type, EP1_AG08A_IF_TYPE_FILE);
+
 	return 0;
 }
 
@@ -354,5 +450,7 @@ int ep1_ag08a_open(apt_usbtrx_dev_t *dev)
  */
 int ep1_ag08a_close(apt_usbtrx_dev_t *dev)
 {
+	ep1_ag08a_unique_data_t *unique_data = get_unique_data(dev);
+	atomic_set(&unique_data->if_type, EP1_AG08A_IF_TYPE_NONE);
 	return 0;
 }

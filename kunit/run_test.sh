@@ -18,6 +18,14 @@ if [ ! -d ./linux ]; then
     echo "CONFIG_KUNIT=y" > .kunitconfig
     echo "CONFIG_APT_USBTRX=y" >> .kunitconfig
     echo "CONFIG_APT_USBTRX_TEST=y" >> .kunitconfig
+    ## socketcan
+    echo "CONFIG_NET=y" >> .kunitconfig
+    echo "CONFIG_CAN=y" >> .kunitconfig
+    echo "CONFIG_CAN_DEV=y" >> .kunitconfig
+    # iio
+    echo "CONFIG_IIO=y" >> .kunitconfig
+    echo "CONFIG_IIO_BUFFER=y" >> .kunitconfig
+    echo "CONFIG_IIO_KFIFO_BUF=y" >> .kunitconfig
 
     # add Kconfig and Makefile
     mkdir -p ${APT_USBTRX_FOLDER}

@@ -53,18 +53,14 @@ typedef struct apt_usbtrx_can_summary_s apt_usbtrx_can_summary_t;
 /*!
  * @brief interface type
  */
-enum APT_USBTRX_CAN_IF_TYPE {
-	APT_USBTRX_CAN_IF_TYPE_NONE = -1,
-	APT_USBTRX_CAN_IF_TYPE_FILE = 0,
-	APT_USBTRX_CAN_IF_TYPE_NET
-};
+enum APT_USBTRX_CAN_IF_TYPE { APT_USBTRX_CAN_IF_TYPE_NONE, APT_USBTRX_CAN_IF_TYPE_FILE, APT_USBTRX_CAN_IF_TYPE_NET };
 
 /*!
  * @brief device unique data
  */
 struct apt_usbtrx_unique_data_can_s {
 	apt_usbtrx_can_summary_t summary;
-	enum APT_USBTRX_CAN_IF_TYPE if_type;
+	atomic_t if_type;
 
 	/* socketcan */
 	struct net_device *netdev;

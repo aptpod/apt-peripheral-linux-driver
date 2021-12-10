@@ -42,8 +42,7 @@ int apt_usbtrx_reset_device(apt_usbtrx_dev_t *dev, bool *success);
 /*!
  * @brief get serial no
  */
-int apt_usbtrx_get_serial_no(apt_usbtrx_dev_t *dev, char *serial_no, int serial_no_size, int *channel,
-			     int *sync_pulse);
+int apt_usbtrx_get_serial_no(apt_usbtrx_dev_t *dev, char *serial_no, int serial_no_size, int *channel, int *sync_pulse);
 
 /*!
  * @brief move DFU mode

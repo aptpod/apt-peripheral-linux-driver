@@ -23,45 +23,46 @@ static void apt_usbtrx_dump_msg(apt_usbtrx_msg_t *msg)
 {
 	int n = 0;
 
-	WMSG("id  : 0x%02x", msg->id);
-	WMSG("size: %d", msg->payload_size);
+	WMSG_RL("id  : 0x%02x", msg->id);
+	WMSG_RL("size: %d", msg->payload_size);
 	while (n < msg->payload_size) {
 		int remain = msg->payload_size - n;
 
 		if (remain >= 8) {
-			WMSG("data: %02x %02x %02x %02x - %02x %02x %02x %02x", msg->payload[n], msg->payload[n + 1],
-			     msg->payload[n + 2], msg->payload[n + 3], msg->payload[n + 4], msg->payload[n + 5],
-			     msg->payload[n + 6], msg->payload[n + 7]);
+			WMSG_RL("data: %02x %02x %02x %02x - %02x %02x %02x %02x", msg->payload[n], msg->payload[n + 1],
+				msg->payload[n + 2], msg->payload[n + 3], msg->payload[n + 4], msg->payload[n + 5],
+				msg->payload[n + 6], msg->payload[n + 7]);
 		} else {
 			switch (remain) {
 			case 0:
 				break;
 			case 1:
-				WMSG("data: %02x", msg->payload[n]);
+				WMSG_RL("data: %02x", msg->payload[n]);
 				break;
 			case 2:
-				WMSG("data: %02x %02x", msg->payload[n], msg->payload[n + 1]);
+				WMSG_RL("data: %02x %02x", msg->payload[n], msg->payload[n + 1]);
 				break;
 			case 3:
-				WMSG("data: %02x %02x %02x", msg->payload[n], msg->payload[n + 1], msg->payload[n + 2]);
+				WMSG_RL("data: %02x %02x %02x", msg->payload[n], msg->payload[n + 1],
+					msg->payload[n + 2]);
 				break;
 			case 4:
-				WMSG("data: %02x %02x %02x %02x", msg->payload[n], msg->payload[n + 1],
-				     msg->payload[n + 2], msg->payload[n + 3]);
+				WMSG_RL("data: %02x %02x %02x %02x", msg->payload[n], msg->payload[n + 1],
+					msg->payload[n + 2], msg->payload[n + 3]);
 				break;
 			case 5:
-				WMSG("data: %02x %02x %02x %02x - %02x", msg->payload[n], msg->payload[n + 1],
-				     msg->payload[n + 2], msg->payload[n + 3], msg->payload[n + 4]);
+				WMSG_RL("data: %02x %02x %02x %02x - %02x", msg->payload[n], msg->payload[n + 1],
+					msg->payload[n + 2], msg->payload[n + 3], msg->payload[n + 4]);
 				break;
 			case 6:
-				WMSG("data: %02x %02x %02x %02x - %02x %02x", msg->payload[n], msg->payload[n + 1],
-				     msg->payload[n + 2], msg->payload[n + 3], msg->payload[n + 4],
-				     msg->payload[n + 5]);
+				WMSG_RL("data: %02x %02x %02x %02x - %02x %02x", msg->payload[n], msg->payload[n + 1],
+					msg->payload[n + 2], msg->payload[n + 3], msg->payload[n + 4],
+					msg->payload[n + 5]);
 				break;
 			case 7:
-				WMSG("data: %02x %02x %02x %02x - %02x %02x %02x", msg->payload[n], msg->payload[n + 1],
-				     msg->payload[n + 2], msg->payload[n + 3], msg->payload[n + 4], msg->payload[n + 5],
-				     msg->payload[n + 6]);
+				WMSG_RL("data: %02x %02x %02x %02x - %02x %02x %02x", msg->payload[n],
+					msg->payload[n + 1], msg->payload[n + 2], msg->payload[n + 3],
+					msg->payload[n + 4], msg->payload[n + 5], msg->payload[n + 6]);
 				break;
 			}
 		}
@@ -144,7 +145,6 @@ STATIC int apt_usbtrx_dispatch_msg(apt_usbtrx_dev_t *dev, u8 *data, apt_usbtrx_m
 		}
 		if (id == APT_USBTRX_CMD_ResetTS && msg->id == APT_USBTRX_CMD_ACK) {
 			dev->basetime = *dev->resettime;
-			IMSG("basetime: %ld.%09ld", dev->basetime.tv_sec, dev->basetime.tv_nsec);
 		}
 		if (dev->rx_complete.id == id) {
 			DMSG("complete!, <id:0x%02x> length=%d", msg->id,
@@ -159,7 +159,7 @@ STATIC int apt_usbtrx_dispatch_msg(apt_usbtrx_dev_t *dev, u8 *data, apt_usbtrx_m
 		int result;
 		result = dev->unique_func.dispatch_msg(dev, data, msg);
 		if (result != RESULT_Success) {
-			EMSG("dispatch_msg().. Error");
+			EMSG_RL("dispatch_msg().. Error");
 			apt_usbtrx_dump_msg(msg);
 			return RESULT_Failure;
 		}
@@ -176,13 +176,12 @@ STATIC int apt_usbtrx_dispatch_msg(apt_usbtrx_dev_t *dev, u8 *data, apt_usbtrx_m
 static void apt_usbtrx_read_bulk_callback(struct urb *urb)
 {
 	apt_usbtrx_dev_t *dev = urb->context;
-	int pos;
 	int recv_size;
 	int result;
 	u8 *buf = dev->rx_transfer.buffer;
-	int last;
-	int remain;
-	int data_size;
+	int total_size;
+	int remain_size;
+	int processed_size;
 	bool onclosing;
 
 	onclosing = atomic_read(&dev->onclosing);
@@ -214,40 +213,42 @@ static void apt_usbtrx_read_bulk_callback(struct urb *urb)
 		return;
 	}
 
-	pos = 0;
-	last = 0;
-	remain = 0;
 	recv_size = urb->actual_length;
 	memcpy(&buf[dev->rx_transfer.data_size], urb->transfer_buffer, recv_size);
-	data_size = dev->rx_transfer.data_size + recv_size;
+	total_size = dev->rx_transfer.data_size + recv_size;
 
-	while (pos + APT_USBTRX_CMD_MIN_LENGTH <= data_size) {
+	processed_size = 0;
+	remain_size = total_size;
+
+	while (remain_size >= APT_USBTRX_CMD_MIN_LENGTH) {
 		apt_usbtrx_msg_t msg;
 
-		result = apt_usbtrx_msg_parse(&buf[pos], data_size - pos, &msg);
+		result = apt_usbtrx_msg_parse(&buf[processed_size], remain_size, &msg);
 		if (result != RESULT_Success) {
 			if (result == RESULT_NotEnough) {
 				break;
 			}
-			pos = pos + 1;
+			processed_size++;
+			remain_size--;
 			continue;
 		}
 
-		result = apt_usbtrx_dispatch_msg(dev, &buf[pos], &msg);
+		result = apt_usbtrx_dispatch_msg(dev, &buf[processed_size], &msg);
 		if (result != RESULT_Success) {
 		}
 
 #if 0
 		DMSG("msg is coming!, <id:0x%02x> length=%d", msg.id, APT_USBTRX_PAYLOAD_LENGTH_TO_MSG(msg.payload_size));
 #endif
-		pos = pos + APT_USBTRX_PAYLOAD_LENGTH_TO_MSG(msg.payload_size);
-		last = pos;
+		processed_size += APT_USBTRX_PAYLOAD_LENGTH_TO_MSG(msg.payload_size);
+		remain_size -= APT_USBTRX_PAYLOAD_LENGTH_TO_MSG(msg.payload_size);
 	}
 
-	if (last > 0) {
-		remain = data_size - last;
-		memmove(buf, &buf[last], remain);
-		dev->rx_transfer.data_size = remain;
+	if (remain_size > 0) {
+		if (processed_size > 0) {
+			memmove(buf, &buf[processed_size], remain_size);
+		}
+		dev->rx_transfer.data_size = remain_size;
 	} else {
 		dev->rx_transfer.data_size = 0;
 	}

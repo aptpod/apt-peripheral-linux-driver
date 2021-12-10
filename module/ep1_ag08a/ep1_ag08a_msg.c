@@ -11,7 +11,7 @@
 /*!
  * @brief convert send rate to value
  */
-static int ep1_ag08a_msg_convert_send_rate_to_value(int send_rate_milli_hz)
+int ep1_ag08a_msg_convert_send_rate_to_value(int send_rate_milli_hz)
 {
 	int send_rate;
 
@@ -60,7 +60,7 @@ static int ep1_ag08a_msg_convert_send_rate_to_value(int send_rate_milli_hz)
 /*!
  * @brief convert send rate from value
  */
-static int ep1_ag08a_msg_convert_send_rate_from_value(int send_rate)
+int ep1_ag08a_msg_convert_send_rate_from_value(int send_rate)
 {
 	int send_rate_milli_hz;
 
@@ -107,9 +107,40 @@ static int ep1_ag08a_msg_convert_send_rate_from_value(int send_rate)
 }
 
 /*!
+ * @brief convert input voltage to nano scale
+ */
+int ep1_ag08a_msg_convert_input_voltage_to_nano_scale(int voltage)
+{
+	switch (voltage) {
+	case EP1_AG08A_INPUT_VOLTAGE_MINUS_10_PLUS_10:
+		return 305185;
+	case EP1_AG08A_INPUT_VOLTAGE_MINUS_5_PLUS_5:
+		return 152593;
+	case EP1_AG08A_INPUT_VOLTAGE_MINUS_2_5_PLUS_2_5:
+		return 76296;
+	case EP1_AG08A_INPUT_VOLTAGE_MINUS_1_25_PLUS_1_25:
+		return 38148;
+	case EP1_AG08A_INPUT_VOLTAGE_MINUS_0_8_PLUS_0_8:
+		return 24415;
+	case EP1_AG08A_INPUT_VOLTAGE_MINUS_0_4_PLUS_0_4:
+		return 12207;
+	case EP1_AG08A_INPUT_VOLTAGE_MINUS_0_2_PLUS_0_2:
+		return 6104;
+	case EP1_AG08A_INPUT_VOLTAGE_MINUS_0_1_PLUS_0_1:
+		return 3052;
+	case EP1_AG08A_INPUT_VOLTAGE_5:
+		return 76296;
+	default:
+		break;
+	}
+
+	return -1;
+}
+
+/*!
  * @brief convert input voltage to value
  */
-static int ep1_ag08a_msg_convert_input_voltage_to_value(int vmin, int vmax)
+int ep1_ag08a_msg_convert_input_voltage_to_value(int vmin, int vmax)
 {
 	int voltage;
 
@@ -142,7 +173,7 @@ static int ep1_ag08a_msg_convert_input_voltage_to_value(int vmin, int vmax)
 /*!
  * @brief convert input voltage from value
  */
-static int ep1_ag08a_msg_convert_input_voltage_from_value(int voltage, int *vmin, int *vmax)
+int ep1_ag08a_msg_convert_input_voltage_from_value(int voltage, int *vmin, int *vmax)
 {
 	if (vmin == NULL || vmax == NULL) {
 		EMSG("vmin or vmax is NULL");
@@ -255,12 +286,10 @@ int ep1_ag08a_msg_parse_response_get_status(u8 *data, int data_size, ep1_ag08a_m
 	status->out.cfg.waveform_type = data[n];
 	n += 1;
 
-	/* convert output voltage [mV] x20 */
-	status->out.cfg.voltage = data[n] * 20;
+	status->out.cfg.voltage = ep1_ag08a_msg_convert_output_voltage_from_value(data[n]);
 	n += 1;
 
-	/* convert output frequency [mHz] x1000 */
-	status->out.cfg.frequency = data[n] * 1000;
+	status->out.cfg.frequency = ep1_ag08a_msg_convert_output_frequency_from_value(data[n]);
 	n += 1;
 
 	if (data[n] & 0x01) {
@@ -372,12 +401,18 @@ int ep1_ag08a_msg_pack_set_analog_output(ep1_ag08a_msg_set_analog_output_t *para
 	data[n] = param->waveform_type;
 	n += 1;
 
-	/* convert output voltage [mV] /20 */
-	data[n] = param->voltage / 20;
+	/* workaround: avoid factory default value error */
+	if (param->voltage == 0) {
+		param->voltage = OUTPUT_CONVERT_SCALE_VOLTAGE;
+	}
+	if (param->frequency == 0) {
+		param->frequency = OUTPUT_CONVERT_SCALE_FREQUENCY;
+	}
+
+	data[n] = ep1_ag08a_msg_convert_output_voltage_to_value(param->voltage);
 	n += 1;
 
-	/* convert output frequency [mHz] /1000 */
-	data[n] = param->frequency / 1000;
+	data[n] = ep1_ag08a_msg_convert_output_frequency_to_value(param->frequency);
 
 	return RESULT_Success;
 }

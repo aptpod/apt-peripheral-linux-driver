@@ -36,10 +36,13 @@ void fake_dev_init(struct kunit *test, apt_usbtrx_dev_t *dev, enum DeviceType de
 		usb_dev.descriptor.idProduct = AP_CT2A_PRODUCT_ID;
 		dev->rx_data_size = AP_CT2A_RXDATA_BUFFER_SIZE;
 		break;
-	case EP1_AG08A:
+	case EP1_AG08A: {
 		usb_dev.descriptor.idProduct = EP1_AG08A_PRODUCT_ID;
 		dev->rx_data_size = EP1_AG08A_RXDATA_BUFFER_SIZE;
+		dev->unique_data = kunit_kzalloc(test, sizeof(ep1_ag08a_unique_data_t), GFP_KERNEL);
+		KUNIT_ASSERT_NOT_ERR_OR_NULL(test, dev->unique_data);
 		break;
+	}
 	case EP1_CH02A:
 		usb_dev.descriptor.idProduct = EP1_CH02A_PRODUCT_ID;
 		break;
@@ -64,6 +67,14 @@ void fake_dev_init(struct kunit *test, apt_usbtrx_dev_t *dev, enum DeviceType de
 	dev->interface = &intf;
 	dev->bulk_in = &bulk_in;
 	dev->bulk_out = &bulk_out;
+	switch (device_type) {
+	case EP1_AG08A: {
+		ep1_ag08a_unique_data_t *unique_data;
+		unique_data = dev->unique_data;
+		atomic_set(&unique_data->if_type, EP1_AG08A_IF_TYPE_FILE);
+		break;
+	}
+	}
 
 	result = apt_usbtrx_ringbuffer_init(&dev->rx_data, dev->rx_data_size);
 	KUNIT_EXPECT_EQ(test, RESULT_Success, result);
@@ -75,6 +86,10 @@ void fake_dev_init(struct kunit *test, apt_usbtrx_dev_t *dev, enum DeviceType de
 void fake_dev_terminate(struct kunit *test, apt_usbtrx_dev_t *dev)
 {
 	int result;
+
+	if (dev->unique_data != NULL) {
+		kunit_kfree(test, dev->unique_data);
+	}
 
 	if (dev->rx_complete.buffer != NULL) {
 		kunit_kfree(test, dev->rx_complete.buffer);

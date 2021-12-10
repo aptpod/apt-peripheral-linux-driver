@@ -111,7 +111,7 @@ int apt_usbtrx_unique_can_init_data(apt_usbtrx_dev_t *dev)
 
 	unique_data = get_unique_data(dev);
 
-	unique_data->if_type = APT_USBTRX_CAN_IF_TYPE_NONE;
+	atomic_set(&unique_data->if_type, APT_USBTRX_CAN_IF_TYPE_NONE);
 	apt_usbtrx_init_stats(&unique_data->summary.dat_std);
 	apt_usbtrx_init_stats(&unique_data->summary.dat_ext);
 	apt_usbtrx_init_stats(&unique_data->summary.rtr_std);

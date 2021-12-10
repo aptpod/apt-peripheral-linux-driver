@@ -10,7 +10,7 @@ MODDIR = /lib/modules/$(KVER)/kernel/drivers/misc
 
 obj-m := $(MODNAME).o
 ccflags-y += -I$(PWD)
-#ccflags-y += -DDBGMSG
+#ccflags-y += -DDEBUG
 apt_usbtrx-objs := 	apt_usbtrx_main.o \
 					apt_usbtrx_core.o \
 					apt_usbtrx_fops.o \
@@ -31,7 +31,8 @@ apt_usbtrx-objs += 	ep1_ag08a/ep1_ag08a_main.o \
 					ep1_ag08a/ep1_ag08a_fops.o \
 					ep1_ag08a/ep1_ag08a_cmd.o \
 					ep1_ag08a/ep1_ag08a_msg.o \
-					ep1_ag08a/ep1_ag08a_sysfs.o
+					ep1_ag08a/ep1_ag08a_sysfs.o \
+					ep1_ag08a/ep1_ag08a_iio.o
 
 apt_usbtrx-objs +=  ep1_ch02a/ep1_ch02a_main.o \
                     ep1_ch02a/ep1_ch02a_fops.o \

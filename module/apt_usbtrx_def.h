@@ -30,19 +30,16 @@
 #define APT_MSG_KEY "apt_usbtrx"
 #define __file__ (strrchr(__FILE__, '/') + 1)
 
-#define IMSG(format, arg...) printk(KERN_INFO APT_MSG_KEY ": " format "\n", ##arg)
-
-#ifdef DBGMSG
-#define DMSG(format, arg...) printk(KERN_INFO APT_MSG_KEY ": %s[%d] " format "\n", __file__, __LINE__, ##arg)
-#else
-#define DMSG(format, arg...)
-#endif
-
-#define WMSG(format, arg...) printk(KERN_WARNING APT_MSG_KEY " WARN: %s[%d] " format "\n", __file__, __LINE__, ##arg)
-
-#define EMSG(format, arg...) printk(KERN_ERR APT_MSG_KEY " ERROR: %s[%d] " format "\n", __file__, __LINE__, ##arg)
-
+#define IMSG(format, arg...) pr_info(APT_MSG_KEY ": " format "\n", ##arg)
+#define DMSG(format, arg...) pr_debug(APT_MSG_KEY ": %s[%d] " format "\n", __file__, __LINE__, ##arg)
+#define WMSG(format, arg...) pr_warn(APT_MSG_KEY " WARN: %s[%d] " format "\n", __file__, __LINE__, ##arg)
+#define EMSG(format, arg...) pr_err(APT_MSG_KEY " ERROR: %s[%d] " format "\n", __file__, __LINE__, ##arg)
 #define CHKMSG(str) DMSG("[%s] %s()", str, __func__)
+
+#define IMSG_RL(format, arg...) pr_info_ratelimited(APT_MSG_KEY ": " format "\n", ##arg)
+#define DMSG_RL(format, arg...) pr_debug_ratelimited(APT_MSG_KEY ": %s[%d] " format "\n", __file__, __LINE__, ##arg)
+#define WMSG_RL(format, arg...) pr_warn_ratelimited(APT_MSG_KEY " WARN: %s[%d] " format "\n", __file__, __LINE__, ##arg)
+#define EMSG_RL(format, arg...) pr_err_ratelimited(APT_MSG_KEY " ERROR: %s[%d] " format "\n", __file__, __LINE__, ##arg)
 
 /*!
  * @brief result code

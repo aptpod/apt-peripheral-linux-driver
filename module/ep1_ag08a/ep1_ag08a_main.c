@@ -9,6 +9,7 @@
 
 #include "ep1_ag08a_main.h"
 #include "ep1_ag08a_def.h"
+#include "ep1_ag08a_iio.h"
 
 /*!
  * @brief initialize unique data
@@ -29,8 +30,8 @@ int ep1_ag08a_init_data(apt_usbtrx_dev_t *dev)
 	}
 
 	unique_data = get_unique_data(dev);
-
-	unique_data->dummy = 0;
+	atomic_set(&unique_data->if_type, EP1_AG08A_IF_TYPE_NONE);
+	unique_data->indio_dev = NULL;
 
 	return RESULT_Success;
 }
@@ -57,8 +58,16 @@ int ep1_ag08a_free_data(apt_usbtrx_dev_t *dev)
  * @brief initialize
  */
 int ep1_ag08a_init(struct usb_interface *intf, const struct usb_device_id *id)
+
 {
-	//ep1_ag08a_unique_data_t *unique_data = get_unique_data(dev);
+	int result;
+
+	result = ep1_ag08a_create_iiodev(intf, id);
+	if (result != RESULT_Success) {
+		EMSG("ep1_ag08a_create_iiodev() failed");
+		return RESULT_Failure;
+	}
+
 	return RESULT_Success;
 }
 

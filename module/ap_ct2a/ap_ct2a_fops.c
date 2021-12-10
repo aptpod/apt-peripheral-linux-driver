@@ -331,13 +331,14 @@ int apt_usbtrx_unique_can_is_device_input_start(apt_usbtrx_dev_t *dev, bool *sta
 int apt_usbtrx_unique_can_open(apt_usbtrx_dev_t *dev)
 {
 	apt_usbtrx_unique_data_can_t *unique_data = get_unique_data(dev);
+	int if_type = atomic_read(&unique_data->if_type);
 
-	if (unique_data->if_type != APT_USBTRX_CAN_IF_TYPE_NONE) {
+	if (if_type != APT_USBTRX_CAN_IF_TYPE_NONE) {
 		EMSG("Device is already in use");
 		return -EBUSY;
 	}
 
-	unique_data->if_type = APT_USBTRX_CAN_IF_TYPE_FILE;
+	atomic_set(&unique_data->if_type, APT_USBTRX_CAN_IF_TYPE_FILE);
 	return 0;
 }
 
@@ -347,7 +348,7 @@ int apt_usbtrx_unique_can_open(apt_usbtrx_dev_t *dev)
 int apt_usbtrx_unique_can_close(apt_usbtrx_dev_t *dev)
 {
 	apt_usbtrx_unique_data_can_t *unique_data = get_unique_data(dev);
-	unique_data->if_type = APT_USBTRX_CAN_IF_TYPE_NONE;
+	atomic_set(&unique_data->if_type, APT_USBTRX_CAN_IF_TYPE_NONE);
 	return 0;
 }
 
@@ -395,7 +396,7 @@ static int apt_usbtrx_unique_can_netdev_start(apt_usbtrx_dev_t *dev)
 	}
 
 	candev->can.state = CAN_STATE_ERROR_ACTIVE;
-	unique_data->if_type = APT_USBTRX_CAN_IF_TYPE_NET;
+	atomic_set(&unique_data->if_type, APT_USBTRX_CAN_IF_TYPE_NET);
 
 	return 0;
 }
@@ -408,9 +409,10 @@ int apt_usbtrx_unique_can_netdev_open(struct net_device *netdev)
 	apt_usbtrx_candev_t *candev = netdev_priv(netdev);
 	apt_usbtrx_dev_t *dev = candev->dev;
 	apt_usbtrx_unique_data_can_t *unique_data = get_unique_data(dev);
+	int if_type = atomic_read(&unique_data->if_type);
 	int err;
 
-	if (unique_data->if_type != APT_USBTRX_CAN_IF_TYPE_NONE) {
+	if (if_type != APT_USBTRX_CAN_IF_TYPE_NONE) {
 		EMSG("Device is already in use");
 		return -EBUSY;
 	}
@@ -455,7 +457,7 @@ int apt_usbtrx_unique_can_netdev_close(struct net_device *netdev)
 	close_candev(netdev);
 
 	candev->can.state = CAN_STATE_STOPPED;
-	unique_data->if_type = APT_USBTRX_CAN_IF_TYPE_NONE;
+	atomic_set(&unique_data->if_type, APT_USBTRX_CAN_IF_TYPE_NONE);
 
 	return 0;
 }
