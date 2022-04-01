@@ -6,6 +6,7 @@
  * Copyright (C) 2020 aptpod Inc.
  */
 
+#include <linux/version.h>
 #include <linux/can/dev.h>
 
 #include "ap_ct2a_core.h"
@@ -38,12 +39,6 @@ static void apt_usbtrx_update_stats(apt_usbtrx_stats_t *stats, unsigned long now
 	stats->kt = ktime_get_real();
 }
 
-void apt_usbtrx_unique_can_get_tv(apt_usbtrx_timestamp_t *ts, struct timeval *tv)
-{
-	tv->tv_sec = ts->ts_sec;
-	tv->tv_usec = ts->ts_usec;
-}
-
 #ifdef SUPPORT_NETDEV
 /*!
  * @brief dispatch message
@@ -55,7 +50,7 @@ static void apt_usbtrx_unique_can_rx_can_msg(apt_usbtrx_dev_t *dev,
 	struct net_device *netdev = unique_data->netdev;
 	struct sk_buff *skb;
 	struct can_frame *cf;
-	struct timeval tv;
+	struct timespec64 ts;
 	struct skb_shared_hwtstamps *hwts;
 
 	if (!netif_device_present(netdev)) {
@@ -67,9 +62,9 @@ static void apt_usbtrx_unique_can_rx_can_msg(apt_usbtrx_dev_t *dev,
 		return;
 	}
 
-	apt_usbtrx_unique_can_get_tv(&recv_can_frame->timestamp, &tv);
+	apt_usbtrx_convert_timestamp_to_timespec64(&recv_can_frame->timestamp, &ts);
 	hwts = skb_hwtstamps(skb);
-	hwts->hwtstamp = timeval_to_ktime(tv);
+	hwts->hwtstamp = timespec64_to_ktime(ts);
 
 	cf->can_id = recv_can_frame->id[0];
 	cf->can_id |= recv_can_frame->id[1] << 8;
@@ -179,7 +174,11 @@ void apt_usbtrx_unique_can_write_bulk_callback(struct urb *urb)
 	stats->tx_packets++;
 	stats->tx_bytes += candev->tx_data_size;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
+	can_get_echo_skb(netdev, 0, NULL);
+#else
 	can_get_echo_skb(netdev, 0);
+#endif
 	netif_wake_queue(netdev);
 #endif
 

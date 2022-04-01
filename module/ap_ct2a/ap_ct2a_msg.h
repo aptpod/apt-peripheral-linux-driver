@@ -32,11 +32,6 @@ int apt_usbtrx_msg_pack_start_stop_can(bool start, u8 *data, int data_size);
 int apt_usbtrx_msg_parse_response_get_status(u8 *data, int data_size, apt_usbtrx_msg_resp_get_status_t *status);
 
 /*!
- * @brief parse (Notify Receive CAN Frame)
- */
-int apt_usbtrx_msg_parse_notify_recv_can_frame(u8 *data, int data_size, struct timespec *ts, struct can_frame *frame);
-
-/*!
  * @brief parse (Notify Receive CAN Summary)
  */
 int apt_usbtrx_msg_parse_notify_recv_can_summary(u8 *data, int data_size, u32 *count, struct can_frame *frame);

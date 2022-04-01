@@ -18,7 +18,7 @@ EDGEPLANT Peripherals の詳細については[製品のホームページ](http
 
 - GNU C
 - GNU make
-- Linux headers
+- Linux headers (kernel v4.4 以上)
 
 ### Installing
 

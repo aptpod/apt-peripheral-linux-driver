@@ -9,6 +9,7 @@
 
 #include "ep1_ag08a_core.h"
 #include "ep1_ag08a_msg.h"
+#include "ep1_ag08a_iio.h"
 
 static void ep1_ag08a_iio_data_copy(apt_usbtrx_msg_t *msg, ep1_ag08a_iio_data_t *priv)
 {
@@ -54,7 +55,7 @@ int ep1_ag08a_dispatch_msg(apt_usbtrx_dev_t *dev, u8 *data, apt_usbtrx_msg_t *ms
 			if (priv->hw_timestamp) {
 				time_ns = p->timestamp.ts_sec * NSEC_PER_SEC + p->timestamp.ts_usec * NSEC_PER_USEC;
 			} else {
-				time_ns = iio_get_time_ns(indio_dev);
+				time_ns = wrap_iio_get_time_ns(indio_dev);
 			}
 			iio_push_to_buffers_with_timestamp(indio_dev, priv->buffer, time_ns);
 		}

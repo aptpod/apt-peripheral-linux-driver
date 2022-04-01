@@ -377,7 +377,7 @@ int apt_usbtrx_reset_ts(apt_usbtrx_dev_t *dev, bool *success)
 	apt_usbtrx_msg_t req_msg;
 	apt_usbtrx_msg_t resp_msg;
 	int id;
-	struct timespec ts;
+	struct timespec64 ts;
 
 	CHKMSG("ENTER");
 
@@ -395,9 +395,9 @@ int apt_usbtrx_reset_ts(apt_usbtrx_dev_t *dev, bool *success)
 	}
 
 	/*** set resettime ***/
-	getrawmonotonic(&ts);
+	get_raw_monootnic_ts64(&ts);
 	*dev->resettime = ts;
-	IMSG("resettime: %ld.%09ld", ts.tv_sec, ts.tv_nsec);
+	IMSG("resettime: %lld.%09ld", (s64)ts.tv_sec, ts.tv_nsec);
 
 	/*** request ***/
 	req_msg.id = APT_USBTRX_CMD_ResetTS;

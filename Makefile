@@ -1,5 +1,5 @@
 MOD = ./module
-TOOLS = ./tools
+TOOLS ?= ./tools
 
 all:
 	$(MAKE) -C $(MOD) netdev

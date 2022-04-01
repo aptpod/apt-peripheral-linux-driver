@@ -5,6 +5,7 @@
  * Copyright (C) 2021 aptpod Inc.
  */
 
+#include <linux/version.h>
 #include <linux/iio/iio.h>
 #include <linux/iio/buffer.h>
 #include <linux/iio/kfifo_buf.h>
@@ -559,10 +560,18 @@ int ep1_ag08a_create_iiodev(struct usb_interface *intf, const struct usb_device_
 	if (!indio_dev->name) {
 		return -ENOMEM;
 	}
-	indio_dev->modes = INDIO_BUFFER_SOFTWARE;
 	indio_dev->info = &ep1_ag08a_iio_info;
 	indio_dev->channels = ep1_ag08a_channels;
 	indio_dev->num_channels = ARRAY_SIZE(ep1_ag08a_channels);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0)
+	ret = devm_iio_kfifo_buffer_setup(&intf->dev, indio_dev, INDIO_BUFFER_SOFTWARE, &ep1_ag08a_buffer_ops);
+	if (ret) {
+		EMSG("failed to setup iio buffer: %d", ret);
+		return ret;
+	}
+#else
+	indio_dev->modes = INDIO_BUFFER_SOFTWARE;
 	indio_dev->setup_ops = &ep1_ag08a_buffer_ops;
 
 	buffer = devm_iio_kfifo_allocate(&intf->dev);
@@ -570,6 +579,7 @@ int ep1_ag08a_create_iiodev(struct usb_interface *intf, const struct usb_device_
 		return -ENOMEM;
 	}
 	iio_device_attach_buffer(indio_dev, buffer);
+#endif
 
 	ret = devm_iio_device_register(&intf->dev, indio_dev);
 	if (ret) {

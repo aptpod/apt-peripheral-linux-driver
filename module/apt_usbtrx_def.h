@@ -10,6 +10,7 @@
 #include <linux/types.h>
 #include <linux/usb.h>
 #include <linux/kref.h>
+#include <linux/version.h>
 
 #include "apt_usbtrx_ringbuffer.h"
 #include "apt_usbtrx_ioctl.h"
@@ -73,6 +74,15 @@ enum RESULT { RESULT_Failure = -1, RESULT_Success = 0, RESULT_NotEnough = 1, RES
 #define APT_USBTRX_MINOR_BASE 0
 
 /*!
+ * @brief  get_raw_monootnic_ts64 aliases
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
+#define get_raw_monootnic_ts64(ts) ktime_get_raw_ts64(ts)
+#else
+#define get_raw_monootnic_ts64(ts) getrawmonotonic64(ts)
+#endif
+
+/*!
  * @brief rx bulk transfer structure
  */
 struct apt_usbtrx_rx_transfer_s {
@@ -130,6 +140,16 @@ struct apt_usbtrx_device_unique_function_s {
 typedef struct apt_usbtrx_device_unique_function_s apt_usbtrx_device_unique_function_t;
 
 /*!
+ * @brief firmware version
+ */
+struct apt_usbtrx_firmware_version_s {
+	int major;
+	int minor;
+	int revision;
+} __attribute__((packed));
+typedef struct apt_usbtrx_firmware_version_s apt_usbtrx_firmware_version_t;
+
+/*!
  * @brief device type
  */
 enum APT_USBTRX_DEVICE_TYPE {
@@ -155,10 +175,10 @@ struct apt_usbtrx_dev_s {
 	apt_usbtrx_rx_transfer_t rx_transfer; /*!< */
 	apt_usbtrx_rx_complete_t rx_complete; /*!< */
 	atomic_t rx_ongoing; /*!< */
-	struct timespec basetime; /*!< */
+	struct timespec64 basetime; /*!< */
 	atomic_t onopening; /*!< */
 	atomic_t onclosing; /*!< */
-	struct timespec *resettime; /*!< */
+	struct timespec64 *resettime; /*!< */
 	int fw_count; /*!< */
 	struct semaphore tx_usb_transfer_sem; /*!< */
 	apt_usbtrx_ringbuffer_t tx_data; /*!< */
@@ -168,6 +188,7 @@ struct apt_usbtrx_dev_s {
 	struct task_struct *tx_thread; /*!< */
 	int ch; /*!< */
 	char serial_no[APT_USBTRX_SERIAL_NO_LENGTH + 1]; /*!< */
+	apt_usbtrx_firmware_version_t fw_ver; /*!< */
 	atomic_t tx_buffer_rate; /*!< */
 	struct completion rx_done; /*!< */
 	struct kref kref;
@@ -199,12 +220,18 @@ static inline void *get_unique_data(const apt_usbtrx_dev_t *dev)
 /*!
  * @brief get relative time (nsec)
  */
-static inline u64 apt_usbtrx_get_relative_time_ns(struct timespec *basetime)
+static inline u64 apt_usbtrx_get_relative_time_ns(struct timespec64 *basetime)
 {
-	struct timespec now;
+	struct timespec64 now;
 
-	getrawmonotonic(&now);
-	return (timespec_to_ns(&now) - timespec_to_ns(basetime));
+	get_raw_monootnic_ts64(&now);
+	return (timespec64_to_ns(&now) - timespec64_to_ns(basetime));
+}
+
+static inline void apt_usbtrx_convert_timestamp_to_timespec64(apt_usbtrx_timestamp_t *timestamp, struct timespec64 *ts)
+{
+	ts->tv_sec = timestamp->ts_sec;
+	ts->tv_nsec = timestamp->ts_usec * 1000;
 }
 
 #endif /* __APT_USBTRX_DEF_H__ */

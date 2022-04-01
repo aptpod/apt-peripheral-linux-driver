@@ -17,6 +17,21 @@
 #include "ep1_ch02a_cmd.h"
 #include "ep1_ch02a_fops.h"
 
+/*!
+ * @brief is support bittiming command
+ */
+bool ep1_ch02a_is_support_bittiming_command(const apt_usbtrx_dev_t *dev)
+{
+	bool support = false;
+	if (dev->fw_ver.major > 2) {
+		support = true;
+	} else if (dev->fw_ver.major == 2 && dev->fw_ver.minor >= 3) {
+		support = true;
+	}
+
+	return support;
+}
+
 #ifdef SUPPORT_NETDEV
 /*!
  * @brief net device operation structure
@@ -45,19 +60,23 @@ static void ep1_ch02a_set_current_bittiming(apt_usbtrx_dev_t *dev, apt_usbtrx_ca
 	ep1_ch02a_msg_resp_get_bit_timing_t bit_timing;
 
 	candev->can.bittiming.bitrate = AP_CT2A_DEFAULT_BAUDRATE;
+	candev->can.clock.freq = AP_CT2A_CLOCK;
 
-	if (ep1_ch02a_get_bit_timing(dev, &bit_timing) == RESULT_Success) {
-		int nominal =
-			1 + bit_timing.params.prop_seg + bit_timing.params.phase_seg1 + bit_timing.params.phase_seg2;
+	if (ep1_ch02a_is_support_bittiming_command(dev)) {
+		if (ep1_ch02a_get_bit_timing(dev, &bit_timing) == RESULT_Success) {
+			int nominal = 1 + bit_timing.params.prop_seg + bit_timing.params.phase_seg1 +
+				      bit_timing.params.phase_seg2;
 
-		candev->can.clock.freq = bit_timing.can_clock;
-		candev->can.bittiming.prop_seg = bit_timing.params.prop_seg;
-		candev->can.bittiming.phase_seg1 = bit_timing.params.phase_seg1;
-		candev->can.bittiming.phase_seg2 = bit_timing.params.phase_seg2;
-		candev->can.bittiming.sjw = bit_timing.params.sjw;
-		candev->can.bittiming.brp = bit_timing.params.brp;
-		candev->can.bittiming.sample_point = (nominal - bit_timing.params.phase_seg2) * 1000 / nominal;
-		candev->can.bittiming.tq = (1000 / (bit_timing.can_clock / (1000 * 1000))) * bit_timing.params.brp;
+			candev->can.clock.freq = bit_timing.can_clock;
+			candev->can.bittiming.prop_seg = bit_timing.params.prop_seg;
+			candev->can.bittiming.phase_seg1 = bit_timing.params.phase_seg1;
+			candev->can.bittiming.phase_seg2 = bit_timing.params.phase_seg2;
+			candev->can.bittiming.sjw = bit_timing.params.sjw;
+			candev->can.bittiming.brp = bit_timing.params.brp;
+			candev->can.bittiming.sample_point = (nominal - bit_timing.params.phase_seg2) * 1000 / nominal;
+			candev->can.bittiming.tq =
+				(1000 / (bit_timing.can_clock / (1000 * 1000))) * bit_timing.params.brp;
+		}
 	}
 }
 

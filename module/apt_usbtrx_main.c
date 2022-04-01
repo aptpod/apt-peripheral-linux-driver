@@ -28,7 +28,7 @@
 /*!
  * @brief reset time (global val)
  */
-static struct timespec g_resettime;
+static struct timespec64 g_resettime;
 
 /*!
  * @brief file operation structure
@@ -249,6 +249,9 @@ STATIC int apt_usbtrx_init_instance(apt_usbtrx_dev_t *dev)
 	dev->tx_thread = NULL;
 	dev->ch = 0;
 	memset(dev->serial_no, '\0', APT_USBTRX_SERIAL_NO_LENGTH + 1);
+	dev->fw_ver.major = 0;
+	dev->fw_ver.minor = 0;
+	dev->fw_ver.revision = 0;
 	atomic_set(&dev->tx_buffer_rate, 0);
 	init_completion(&dev->rx_done);
 	dev->timestamp_mode = APT_USBTRX_TIMESTAMP_MODE_DEVICE;
@@ -335,12 +338,9 @@ static int apt_usbtrx_init(struct usb_interface *intf, const struct usb_device_i
 	char serial_no[serial_no_size];
 	int ch;
 	int sync_pulse;
-	int major;
-	int minor;
-	int revision;
 	int retry = 3;
 	bool success;
-	struct timespec ts;
+	struct timespec64 ts;
 	bool dfu = false;
 
 	CHKMSG("ENTER");
@@ -393,9 +393,9 @@ static int apt_usbtrx_init(struct usb_interface *intf, const struct usb_device_i
 	}
 
 	/*** set basetime ***/
-	getrawmonotonic(&ts);
+	get_raw_monootnic_ts64(&ts);
 	dev->basetime = ts;
-	IMSG("inittime: %ld.%09ld", ts.tv_sec, ts.tv_nsec);
+	IMSG("inittime: %lld.%09ld", (s64)ts.tv_sec, ts.tv_nsec);
 
 	if (dfu == true) {
 		IMSG("DFU mode...");
@@ -437,21 +437,22 @@ static int apt_usbtrx_init(struct usb_interface *intf, const struct usb_device_i
 	IMSG("ch=%d, sync pulse=%d, serial no=%s", ch, sync_pulse, serial_no);
 
 	/* version logging */
-	result = apt_usbtrx_get_fw_version(dev, &major, &minor);
+	result = apt_usbtrx_get_fw_version(dev, &dev->fw_ver.major, &dev->fw_ver.minor);
 	if (result != RESULT_Success) {
 		EMSG("apt_usbtrx_get_fw_version().. Error");
 		return RESULT_Failure;
 	}
-	if (is_support_revision_command(dev->device_type, major, minor)) {
-		result = apt_usbtrx_get_fw_version_revision(dev, &major, &minor, &revision);
+	if (is_support_revision_command(dev->device_type, dev->fw_ver.major, dev->fw_ver.minor)) {
+		result = apt_usbtrx_get_fw_version_revision(dev, &dev->fw_ver.major, &dev->fw_ver.minor,
+							    &dev->fw_ver.revision);
 		if (result != RESULT_Success) {
-			IMSG("device does not support revision");
-			IMSG("FW ver.%d.%d", major, minor);
+			EMSG("apt_usbtrx_get_fw_version_revision().. Error");
+			return RESULT_Failure;
 		} else {
-			IMSG("FW ver.%d.%d.%d", major, minor, revision);
+			IMSG("FW ver.%d.%d.%d", dev->fw_ver.major, dev->fw_ver.minor, dev->fw_ver.revision);
 		}
 	} else {
-		IMSG("FW ver.%d.%d", major, minor);
+		IMSG("FW ver.%d.%d", dev->fw_ver.major, dev->fw_ver.minor);
 	}
 
 	result = apt_usbtrx_ringbuffer_init(&dev->tx_data, APT_USBTRX_TXDATA_BUFFER_SIZE);
@@ -635,7 +636,7 @@ static int apt_usbtrx_probe(struct usb_interface *intf, const struct usb_device_
 
 	dev->rx_rbmsg = kzalloc(dev->rx_data_size, GFP_KERNEL);
 	if (dev->rx_rbmsg == NULL) {
-		EMSG("kzalloc().. Error, <size:%ld>", dev->rx_data_size);
+		EMSG("kzalloc().. Error, <size:%zu>", dev->rx_data_size);
 		goto error;
 	}
 

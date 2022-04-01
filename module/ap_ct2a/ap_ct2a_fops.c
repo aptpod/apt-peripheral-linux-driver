@@ -6,6 +6,7 @@
  * Copyright (C) 2020 aptpod Inc.
  */
 
+#include <linux/version.h>
 #include <linux/uaccess.h>
 
 #include "../apt_usbtrx_fops.h" /* apt_usbtrx_write_tx_rb() */
@@ -499,15 +500,18 @@ netdev_tx_t apt_usbtrx_unique_can_netdev_start_xmit(struct sk_buff *skb, struct 
 	candev->tx_data_size = tx_data_size;
 
 	netif_stop_queue(netdev);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
+	can_put_echo_skb(skb, netdev, 0, 0);
+#else
 	can_put_echo_skb(skb, netdev, 0);
+#endif
 
 	result = apt_usbtrx_write_tx_rb(candev->dev, &send_cf, sizeof(send_cf));
 	if (result < 0) {
 		EMSG("apt_usbtrx_write_rb().. Error");
 		return NETDEV_TX_BUSY;
 	}
-
-	netif_trans_update(netdev);
 
 	return NETDEV_TX_OK;
 }

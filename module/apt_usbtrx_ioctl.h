@@ -8,6 +8,44 @@
 #define __APT_USBTRX_FOPS_DEF_H__
 
 #include <linux/ioctl.h>
+#include <linux/version.h>
+
+#ifdef __KERNEL__
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+struct timespec {
+	__kernel_old_time_t tv_sec;
+	long tv_nsec;
+};
+
+#if __BITS_PER_LONG == 64
+static inline struct timespec timespec64_to_timespec(const struct timespec64 ts64)
+{
+	return *(const struct timespec *)&ts64;
+}
+static inline struct timespec64 timespec_to_timespec64(const struct timespec ts)
+{
+	return *(const struct timespec64 *)&ts;
+}
+#else
+static inline struct timespec timespec64_to_timespec(const struct timespec64 ts64)
+{
+	struct timespec ret;
+
+	ret.tv_sec = (__kernel_old_time_t)ts64.tv_sec;
+	ret.tv_nsec = ts64.tv_nsec;
+	return ret;
+}
+static inline struct timespec64 timespec_to_timespec64(const struct timespec ts)
+{
+	struct timespec64 ret;
+
+	ret.tv_sec = ts.tv_sec;
+	ret.tv_nsec = ts.tv_nsec;
+	return ret;
+}
+#endif
+#endif
+#endif
 
 /* ----------------------------------------------------------- */
 /* ----------------------- All Device ------------------------ */

@@ -1,9 +1,7 @@
 
-KVER = `uname -r`
-KSRC = /lib/modules/$(KVER)/build
-#ARCH = arm
-#CROSS_COMPILE = arm-linux-gnueabihf-
-PWD = $(shell pwd)
+KVER ?= `uname -r`
+KERNEL_SRC ?= /lib/modules/$(KVER)/build
+PWD := $(shell pwd)
 
 MODNAME = apt_usbtrx
 MODDIR = /lib/modules/$(KVER)/kernel/drivers/misc
@@ -41,18 +39,21 @@ apt_usbtrx-objs +=  ep1_ch02a/ep1_ch02a_main.o \
 					ep1_ch02a/ep1_ch02a_msg.o
 
 all:
-#	make -C $(KSRC) M=$(PWD) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) modules V=1
-	make -C $(KSRC) M=$(PWD) modules #V=1
+#	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) modules
+	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) modules
 
 netdev:
-	make -C $(KSRC) M=$(PWD) ccflags-y+="-DSUPPORT_NETDEV" modules
+	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) ccflags-y+="-DSUPPORT_NETDEV" modules
 
 install:
 	install -p -m 644 $(MODNAME).ko $(MODDIR)
 	/sbin/depmod -a ${KVER}
 
+modules_install:
+	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) modules_install
+
 clean:
-	make -C $(KSRC) M=$(PWD) clean
+	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) clean
 	rm -f *~
 
 

@@ -17,7 +17,7 @@ To build this device driver, the following packages are required.
 
 - GNU C
 - GNU make
-- Linux headers
+- Linux headers (kernel v4.4 and above)
 
 ### Installation
 

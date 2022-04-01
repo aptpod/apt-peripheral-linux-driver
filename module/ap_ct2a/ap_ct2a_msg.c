@@ -210,50 +210,6 @@ int apt_usbtrx_msg_parse_response_get_status(u8 *data, int data_size, apt_usbtrx
 	return RESULT_Success;
 }
 
-/*!
- * @brief parse (Notify Receive CAN Frame)
- */
-int apt_usbtrx_msg_parse_notify_recv_can_frame(u8 *data, int data_size, struct timespec *ts, struct can_frame *frame)
-{
-	int n = 0;
-
-	/*** timestamp (sec) ***/
-	ts->tv_sec = data[n];
-	ts->tv_sec |= data[n + 1] << 8;
-	ts->tv_sec |= data[n + 2] << 16;
-	ts->tv_sec |= data[n + 3] << 24;
-	n = n + 4;
-
-	/*** timestamp (sec) ***/
-	ts->tv_nsec = data[n];
-	ts->tv_nsec |= data[n + 1] << 8;
-	ts->tv_nsec |= data[n + 2] << 16;
-	ts->tv_nsec |= data[n + 3] << 24;
-	n = n + 4;
-
-	/*** id ***/
-	frame->can_id = data[n];
-	frame->can_id |= data[n + 1] << 8;
-	frame->can_id |= data[n + 2] << 16;
-	frame->can_id |= data[n + 3] << 24;
-	n = n + 4;
-
-	/*** dlc ***/
-	frame->can_dlc = data[n] & 0x0f;
-	n = n + 1;
-
-	/*** pad, res0, res1 ***/
-	frame->__pad = 0;
-	frame->__res0 = 0;
-	frame->__res1 = 0;
-
-	/*** data ***/
-	memcpy(frame->data, &data[n], 8);
-	n = n + 8;
-
-	return RESULT_Success;
-}
-
 /*
  * @brief parse (Notify Receive CAN Summary)
  */
@@ -269,6 +225,7 @@ int apt_usbtrx_msg_parse_notify_recv_can_summary(u8 *data, int data_size, u32 *c
 	n = n + 4;
 
 	/*** id ***/
+	memset(frame, 0, sizeof(struct can_frame));
 	frame->can_id = data[n];
 	frame->can_id |= data[n + 1] << 8;
 	frame->can_id |= data[n + 2] << 16;
@@ -278,11 +235,6 @@ int apt_usbtrx_msg_parse_notify_recv_can_summary(u8 *data, int data_size, u32 *c
 	/*** dlc ***/
 	frame->can_dlc = data[n] & 0x0f;
 	n = n + 1;
-
-	/*** pad, res0, res1 ***/
-	frame->__pad = 0;
-	frame->__res0 = 0;
-	frame->__res1 = 0;
 
 	/*** data ***/
 	memcpy(frame->data, &data[n], 8);

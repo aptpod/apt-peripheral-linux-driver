@@ -14,6 +14,7 @@
 #include "../ap_ct2a/ap_ct2a_cmd.h" /* inherit from ap_ct2a(can_set_mode) */
 #include "ep1_ch02a_cmd.h"
 #include "ep1_ch02a_cmd_def.h"
+#include "ep1_ch02a_main.h"
 
 static int ep1_ch02a_ioctl_set_bit_timing(apt_usbtrx_dev_t *dev, const ep1_ch02a_ioctl_set_bit_timing_t *param)
 {
@@ -141,7 +142,7 @@ int ep1_ch02a_netdev_set_bittiming(struct net_device *netdev)
 		}
 	}
 
-	{
+	if (ep1_ch02a_is_support_bittiming_command(dev)) {
 		ep1_ch02a_ioctl_set_bit_timing_t param;
 
 		param.prop_seg = candev->can.bittiming.prop_seg;

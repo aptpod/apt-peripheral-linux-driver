@@ -83,7 +83,7 @@ static ssize_t apt_usbtrx_sysfs_cnt_timestamp_show(struct device *dev, struct de
 	apt_usbtrx_dev_t *usbtrx_dev = dev_get_drvdata(dev);
 	apt_usbtrx_unique_data_can_t *unique_data = get_unique_data(usbtrx_dev);
 
-	struct timespec ts;
+	struct timespec64 ts;
 	ktime_t kt = ktime_set(0, 0);
 
 	if (ktime_compare(kt, unique_data->summary.dat_std.kt) < 0) {
@@ -102,8 +102,8 @@ static ssize_t apt_usbtrx_sysfs_cnt_timestamp_show(struct device *dev, struct de
 		kt = unique_data->summary.err.kt;
 	}
 
-	ts = ktime_to_timespec(kt);
-	return sprintf(buf, "%lu\n", ts.tv_sec);
+	ts = ktime_to_timespec64(kt);
+	return sprintf(buf, "%lld\n", (s64)ts.tv_sec);
 }
 
 static DEVICE_ATTR(cnt_timestamp, S_IRUGO, apt_usbtrx_sysfs_cnt_timestamp_show, NULL);

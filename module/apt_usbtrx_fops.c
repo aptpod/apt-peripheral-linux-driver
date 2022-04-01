@@ -571,7 +571,7 @@ long apt_usbtrx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			return -EIO;
 		}
 
-		param.ts = dev->basetime;
+		param.ts = timespec64_to_timespec(dev->basetime);
 		result = copy_to_user((void __user *)arg, &param, sizeof(apt_usbtrx_ioctl_reset_ts_t));
 		if (result != 0) {
 			EMSG("copy_to_user().. Error");
@@ -596,7 +596,7 @@ long apt_usbtrx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case APT_USBTRX_IOCTL_GET_BASETIME: {
 		apt_usbtrx_ioctl_get_basetime_t param;
 
-		param.basetime = dev->basetime;
+		param.basetime = timespec64_to_timespec(dev->basetime);
 		result = copy_to_user((void __user *)arg, &param, sizeof(apt_usbtrx_ioctl_get_basetime_t));
 		if (result != 0) {
 			EMSG("copy_to_user().. Error");
@@ -612,7 +612,7 @@ long apt_usbtrx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			EMSG("copy_from_user().. Error");
 			return -EFAULT;
 		}
-		dev->basetime = param.basetime;
+		dev->basetime = timespec_to_timespec64(param.basetime);
 		break;
 	}
 	case APT_USBTRX_IOCTL_MOVE_DFU: {
