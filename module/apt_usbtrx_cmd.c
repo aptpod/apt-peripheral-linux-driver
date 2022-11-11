@@ -395,7 +395,7 @@ int apt_usbtrx_reset_ts(apt_usbtrx_dev_t *dev, bool *success)
 	}
 
 	/*** set resettime ***/
-	get_raw_monootnic_ts64(&ts);
+	get_ts64(dev, &ts);
 	*dev->resettime = ts;
 	IMSG("resettime: %lld.%09ld", (s64)ts.tv_sec, ts.tv_nsec);
 

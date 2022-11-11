@@ -11,6 +11,7 @@
 #include <linux/usb.h>
 #include <linux/kref.h>
 #include <linux/version.h>
+#include <linux/time.h>
 
 #include "apt_usbtrx_ringbuffer.h"
 #include "apt_usbtrx_ioctl.h"
@@ -74,12 +75,12 @@ enum RESULT { RESULT_Failure = -1, RESULT_Success = 0, RESULT_NotEnough = 1, RES
 #define APT_USBTRX_MINOR_BASE 0
 
 /*!
- * @brief  get_raw_monootnic_ts64 aliases
+ * @brief  get_raw_monotonic_ts64 aliases
  */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
-#define get_raw_monootnic_ts64(ts) ktime_get_raw_ts64(ts)
+#define get_raw_monotonic_ts64(ts) ktime_get_raw_ts64(ts)
 #else
-#define get_raw_monootnic_ts64(ts) getrawmonotonic64(ts)
+#define get_raw_monotonic_ts64(ts) getrawmonotonic64(ts)
 #endif
 
 /*!
@@ -175,6 +176,7 @@ struct apt_usbtrx_dev_s {
 	apt_usbtrx_rx_transfer_t rx_transfer; /*!< */
 	apt_usbtrx_rx_complete_t rx_complete; /*!< */
 	atomic_t rx_ongoing; /*!< */
+	int basetime_clock_id; /*!< */
 	struct timespec64 basetime; /*!< */
 	atomic_t onopening; /*!< */
 	atomic_t onclosing; /*!< */
@@ -218,13 +220,25 @@ static inline void *get_unique_data(const apt_usbtrx_dev_t *dev)
 }
 
 /*!
+ * @brief get ts64
+ */
+static inline void get_ts64(const apt_usbtrx_dev_t *dev, struct timespec64 *now)
+{
+	if (dev->basetime_clock_id == CLOCK_MONOTONIC) {
+		ktime_get_ts64(now);
+	} else {
+		get_raw_monotonic_ts64(now);
+	}
+}
+
+/*!
  * @brief get relative time (nsec)
  */
-static inline u64 apt_usbtrx_get_relative_time_ns(struct timespec64 *basetime)
+static inline u64 apt_usbtrx_get_relative_time_ns(const apt_usbtrx_dev_t *dev, struct timespec64 *basetime)
 {
 	struct timespec64 now;
 
-	get_raw_monootnic_ts64(&now);
+	get_ts64(dev, &now);
 	return (timespec64_to_ns(&now) - timespec64_to_ns(basetime));
 }
 

@@ -236,6 +236,7 @@ STATIC int apt_usbtrx_init_instance(apt_usbtrx_dev_t *dev)
 	dev->rx_complete.data_size = 0;
 
 	atomic_set(&dev->rx_ongoing, false);
+	dev->basetime_clock_id = CLOCK_MONOTONIC_RAW;
 	dev->basetime.tv_sec = 0;
 	dev->basetime.tv_nsec = 0;
 	atomic_set(&dev->onopening, true);
@@ -393,7 +394,7 @@ static int apt_usbtrx_init(struct usb_interface *intf, const struct usb_device_i
 	}
 
 	/*** set basetime ***/
-	get_raw_monootnic_ts64(&ts);
+	get_ts64(dev, &ts);
 	dev->basetime = ts;
 	IMSG("inittime: %lld.%09ld", (s64)ts.tv_sec, ts.tv_nsec);
 

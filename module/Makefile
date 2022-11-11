@@ -49,6 +49,10 @@ install:
 	install -p -m 644 $(MODNAME).ko $(MODDIR)
 	/sbin/depmod -a ${KVER}
 
+uninstall:
+	$(RM) $(MODDIR)/$(MODNAME).ko
+	/sbin/depmod -a ${KVER}
+
 modules_install:
 	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) modules_install
 

@@ -8,6 +8,8 @@ ENABLETS=${PROGDIR}/apt_usbtrx_enablets
 RESETTS=${PROGDIR}/apt_usbtrx_resetts
 SERIALNO=${PROGDIR}/apt_usbtrx_serial_no
 
+: ${BASETIME_CLOCK_ID:=CLOCK_MONOTONIC_RAW}
+
 devices=$(find /dev -name "aptUSB*" | sort)
 
 reset_masters=()
@@ -23,6 +25,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 for device in $devices; do
+	echo "${BASETIME_CLOCK_ID}" >"/sys/$(udevadm info --query=path --name=$device)/device/basetime_clock_id"
 	${ENABLETS} -f "$device"
 	sync=$(${SERIALNO} -f "$device" -p)
 	echo "enable timestamp reset for $device ($sync)"

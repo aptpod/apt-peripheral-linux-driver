@@ -1,20 +1,36 @@
 MOD = ./module
 TOOLS ?= ./tools
 
-all:
+.PHONY: module tools
+
+all: module tools
+
+module:
 	$(MAKE) -C $(MOD) netdev
-	$(MAKE) -C $(TOOLS)/apt_usbtrx_enablets
-	$(MAKE) -C $(TOOLS)/apt_usbtrx_resetts
-	$(MAKE) -C $(TOOLS)/apt_usbtrx_serial_no
 
-install:
+tools:
+	$(MAKE) -C $(TOOLS)
+
+install: install_module install_tools
+
+install_module:
 	$(MAKE) install -C $(MOD)
-	$(MAKE) install -C $(TOOLS)/apt_usbtrx_enablets
-	$(MAKE) install -C $(TOOLS)/apt_usbtrx_resetts
-	$(MAKE) install -C $(TOOLS)/apt_usbtrx_serial_no
 
-clean:
+install_tools:
+	$(MAKE) install -C $(TOOLS)
+
+uninstall: uninstall_module uninstall_tools
+
+uninstall_module:
+	$(MAKE) uninstall -C $(MOD)
+
+uninstall_tools:
+	$(MAKE) uninstall -C $(TOOLS)
+
+clean: clean_module clean_tools
+
+clean_module:
 	$(MAKE) clean -C $(MOD)
-	$(MAKE) clean -C $(TOOLS)/apt_usbtrx_enablets
-	$(MAKE) clean -C $(TOOLS)/apt_usbtrx_resetts
-	$(MAKE) clean -C $(TOOLS)/apt_usbtrx_serial_no
+
+clean_tools:
+	$(MAKE) clean -C $(TOOLS)

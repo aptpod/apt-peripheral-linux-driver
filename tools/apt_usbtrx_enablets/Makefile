@@ -21,10 +21,13 @@ $(TARGET): $(OBJS)
 .c.o:
 	$(CC) $(CXXFLAGS) -c $< $(INCDIR) $(LIBDIR) $(LIBS)
 
-.PHONY: clean install
+.PHONY: clean install uninstall
 clean:
 	$(RM) $(TARGET) $(OBJS) *~
 
 install:
 	install -d $(DESTDIR)/bin
 	install $(TARGET) $(DESTDIR)/bin
+
+uninstall:
+	$(RM) $(DESTDIR)/bin/$(TARGET)

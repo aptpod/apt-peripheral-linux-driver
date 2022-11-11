@@ -358,14 +358,14 @@ none
 
 デバイスが保持している CAN 受信に関する集計情報を一定周期でデバイスから受信します。受信したデータは sysfs 上に書き込まれます。書き込まれるデータは以下の通りです。
 
-| file name     | description                           |
-| ------------- | ------------------------------------- |
-| datcnt        | 標準 ID の CAN データフレーム受信数   |
-| ext_datcnt    | 拡張 ID の CAN データフレーム受信数   |
-| rtrcnt        | 標準 ID の CAN リモートフレーム受信数 |
-| ext_rtrcnt    | 拡張 ID の CAN リモートフレーム受信数 |
-| errcnt        | エラーフレーム受信数                  |
-| cnt_timestamp | 最終更新日時                          |
+| file name     | mode | description                           |
+| ------------- | ---- | ------------------------------------- |
+| datcnt        | R    | 標準 ID の CAN データフレーム受信数   |
+| ext_datcnt    | R    | 拡張 ID の CAN データフレーム受信数   |
+| rtrcnt        | R    | 標準 ID の CAN リモートフレーム受信数 |
+| ext_rtrcnt    | R    | 拡張 ID の CAN リモートフレーム受信数 |
+| errcnt        | R    | エラーフレーム受信数                  |
+| cnt_timestamp | R    | 最終更新日時                          |
 
 sysfs のデバイスパスは以下のコマンドで表示できます。
 

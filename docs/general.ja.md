@@ -20,6 +20,13 @@ reset timestamp of /dev/aptUSB0
 basetime: 2133.184170688
 ```
 
+基準時刻の取得方法はデフォルトで `CLOCK_MONOTONIC_RAW` に設定されています。取得方法を変更する場合は、環境変数 `BASETIME_CLOCK_ID` に `CLOCK_MONOTONIC` または `CLOCK_MONOTONIC_RAW` を設定し、上記スクリプトを実行してください。以下は `CLOCK_MONOTONIC`に設定する例です。
+
+```sh
+$ export BASETIME_CLOCK_ID=CLOCK_MONOTONIC
+$ sudo -E ./apt_usbtrx_timesync_all.sh
+```
+
 ## Firmware upgrade
 
 ### Prerequisites
@@ -313,3 +320,29 @@ none
 #### Notes
 
 データに付与されているタイムスタンプは、基準時刻からの相対時間です。 データを受信した実際の時刻は、この基準時刻に対してデータのタイムスタンプを加算することで求めることができます。
+
+## sysfs
+
+EDGEPLANT USB Peripherals で共通の sysfs 項目は以下の通りです。
+
+| file name         | mode | description                           |
+| ----------------- | ---- | ------------------------------------- |
+| skipcnt           | R    | バッファフルのため受信に失敗したデータフレーム合計サイズ |
+| timestamp_mode    | R    | タイムスタンプモード |
+| basetime_clock_id | R/W  | 基準時刻の取得方法 </br> `CLOCK_MONOTONIC_RAW` (デフォルト)  または `CLOCK_MONOTONIC_RAW` で設定可能 |
+
+sysfs のデバイスパスは以下のコマンドで表示できます。
+
+```sh
+$ udevadm info --query=path --name=/dev/aptUSB0
+/devices/3530000.xhci/usb1/1-2/1-2.3/1-2.3.1/1-2.3.1:1.0/usbmisc/aptUSB0
+```
+
+各情報は `/sys/<DEVICE PATH>/device` にあります。例えば `basetime_clock_id` の場合は以下のコマンドで設定、表示ができます。
+
+```sh
+$ echo "CLOCK_MONOTONIC" > /sys/devices/3530000.xhci/usb1/1-2/1-2.3/1-2.3.1/1-2.3.1:1.0/usbmisc/aptUSB0/device/basetime_clock_id
+
+$ cat /sys/devices/3530000.xhci/usb1/1-2/1-2.3/1-2.3.1/1-2.3.1:1.0/usbmisc/aptUSB0/device/basetime_clock_id
+CLOCK_MONOTONIC
+```

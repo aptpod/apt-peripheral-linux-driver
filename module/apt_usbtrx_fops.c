@@ -284,7 +284,7 @@ ssize_t apt_usbtrx_read(struct file *file, char __user *buffer, size_t count, lo
 			EMSG("apt_usbtrx_ringbuffer_rawread().. Error");
 			return -EIO;
 		} else if (rsize != 0) {
-			relative_time_ns = apt_usbtrx_get_relative_time_ns(&dev->basetime);
+			relative_time_ns = apt_usbtrx_get_relative_time_ns(dev, &dev->basetime);
 			result = apt_usbtrx_parse_rbmsg(dev, dev->rx_rbmsg, rsize, relative_time_ns);
 			if (result != RESULT_Success) {
 				EMSG("apt_usbtrx_parse_rbmsg().. Error");
