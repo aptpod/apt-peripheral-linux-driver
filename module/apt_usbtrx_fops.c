@@ -314,7 +314,6 @@ ssize_t apt_usbtrx_write_tx_rb(apt_usbtrx_dev_t *dev, const void *payload, const
 	int result;
 	bool onopening;
 	bool onclosing;
-	bool empty;
 	ssize_t wsize;
 	size_t free_size;
 
@@ -354,7 +353,6 @@ ssize_t apt_usbtrx_write_tx_rb(apt_usbtrx_dev_t *dev, const void *payload, const
 		return -EIO;
 	}
 
-	empty = apt_usbtrx_ringbuffer_is_empty(&dev->tx_data);
 	free_size = apt_usbtrx_ringbuffer_get_free_size(&dev->tx_data);
 	if (free_size < msg_size) {
 		EMSG("write buffer is full");
@@ -367,9 +365,7 @@ ssize_t apt_usbtrx_write_tx_rb(apt_usbtrx_dev_t *dev, const void *payload, const
 		return -EIO;
 	}
 
-	if (empty == true) {
-		wake_up_interruptible(&dev->tx_data.wq);
-	}
+	wake_up_interruptible(&dev->tx_data.wq);
 
 	return payload_size;
 }

@@ -36,13 +36,8 @@ int ep1_ag08a_dispatch_msg(apt_usbtrx_dev_t *dev, u8 *data, apt_usbtrx_msg_t *ms
 		int if_type = atomic_read(&unique_data->if_type);
 
 		if (if_type == EP1_AG08A_IF_TYPE_FILE) {
-			bool empty;
-			empty = apt_usbtrx_ringbuffer_is_empty(&dev->rx_data);
 			apt_usbtrx_ringbuffer_write(&dev->rx_data, msg->payload, msg->payload_size);
-
-			if (empty) {
-				wake_up_interruptible(&dev->rx_data.wq);
-			}
+			wake_up_interruptible(&dev->rx_data.wq);
 		} else if (if_type == EP1_AG08A_IF_TYPE_IIO) {
 			struct iio_dev *indio_dev = unique_data->indio_dev;
 			ep1_ag08a_iio_data_t *priv = iio_priv(indio_dev);

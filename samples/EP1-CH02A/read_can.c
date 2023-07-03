@@ -44,6 +44,13 @@ print_can_frame(struct timespec* timestamp, struct can_frame* frame)
 int
 main(int argc, char* argv[])
 {
+    /*
+     * Set device path.
+     * You can check the serial number of the device path
+     * and the channel number (interface number) with the following command.
+     * e.g.
+     *   udevadm info --query=property /dev/aptUSB0 | grep -e ID_SERIAL -e ID_USB_INTERFACE_NUM
+     */
     const char* devpath = "/dev/aptUSB0";
     int fd;
     int result;
@@ -98,7 +105,11 @@ main(int argc, char* argv[])
         unsigned char buf[128];
         ssize_t rsize = read(fd, buf, sizeof(buf));
 
-        /* Multiple CAN data will be stored in the receive buffer. */
+        /*
+         * Multiple CAN data will be stored in the receive buffer.
+         * The data format of the CAN frame is as follows.
+         * https://github.com/aptpod/apt-peripheral-linux-driver/blob/main/docs/EP1-CH02A.ja.md#can-frame
+         */
         const int packet_num = rsize / EP1_CH02A_CAN_PACKET_SIZE;
         for (int num = 0, pos = 0; num < packet_num;
              ++num, pos += EP1_CH02A_CAN_PACKET_SIZE) {

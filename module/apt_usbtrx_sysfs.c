@@ -82,6 +82,57 @@ static DEVICE_ATTR(basetime_clock_id, S_IWUSR | S_IRUGO, apt_usbtrx_sysfs_baseti
 		   apt_usbtrx_sysfs_basetime_clock_id_store);
 
 /*!
+ * @brief firmware version
+ */
+static ssize_t apt_usbtrx_sysfs_firmware_version_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	apt_usbtrx_dev_t *usbtrx_dev = NULL;
+
+	usbtrx_dev = dev_get_drvdata(dev);
+	return sprintf(buf, "%d.%d.%d\n", usbtrx_dev->fw_ver.major, usbtrx_dev->fw_ver.minor,
+		       usbtrx_dev->fw_ver.revision);
+}
+static DEVICE_ATTR(firmware_version, S_IRUGO, apt_usbtrx_sysfs_firmware_version_show, NULL);
+
+/*!
+ * @brief ch
+ */
+static ssize_t apt_usbtrx_sysfs_ch_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	apt_usbtrx_dev_t *usbtrx_dev = NULL;
+
+	usbtrx_dev = dev_get_drvdata(dev);
+	return sprintf(buf, "%d\n", usbtrx_dev->ch);
+}
+static DEVICE_ATTR(ch, S_IRUGO, apt_usbtrx_sysfs_ch_show, NULL);
+
+/*!
+ * @brief sync_pulse
+ */
+static ssize_t apt_usbtrx_sysfs_sync_pulse_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	apt_usbtrx_dev_t *usbtrx_dev = NULL;
+	const char *sync_pulse_str = NULL;
+
+	usbtrx_dev = dev_get_drvdata(dev);
+
+	switch (usbtrx_dev->sync_pulse) {
+	case APT_USBTRX_SYNC_PULSE_SOURCE:
+		sync_pulse_str = "source";
+		break;
+	case APT_USBTRX_SYNC_PULSE_EXTERNAL:
+		sync_pulse_str = "external";
+		break;
+	default:
+		EMSG("Invalid sync_pulse is set.");
+		return -EINVAL;
+	}
+
+	return sprintf(buf, "%s\n", sync_pulse_str);
+}
+static DEVICE_ATTR(sync_pulse, S_IRUGO, apt_usbtrx_sysfs_sync_pulse_show, NULL);
+
+/*!
  * @brief sysfs initialize
  */
 int apt_usbtrx_sysfs_init(struct device *dev)
@@ -107,6 +158,21 @@ int apt_usbtrx_sysfs_init(struct device *dev)
 	result = device_create_file(dev, &dev_attr_basetime_clock_id);
 	if (result != 0) {
 		EMSG("device_create_file().. Error, <name:%s>", "basetime_clock_id");
+	}
+
+	result = device_create_file(dev, &dev_attr_firmware_version);
+	if (result != 0) {
+		EMSG("device_create_file().. Error, <name:%s>", "firmware_version");
+	}
+
+	result = device_create_file(dev, &dev_attr_ch);
+	if (result != 0) {
+		EMSG("device_create_file().. Error, <name:%s>", "ch");
+	}
+
+	result = device_create_file(dev, &dev_attr_sync_pulse);
+	if (result != 0) {
+		EMSG("device_create_file().. Error, <name:%s>", "sync_pulse");
 	}
 
 	usbtrx_dev = dev_get_drvdata(dev);
@@ -140,6 +206,9 @@ int apt_usbtrx_sysfs_term(struct device *dev)
 	device_remove_file(dev, &dev_attr_skipcnt);
 	device_remove_file(dev, &dev_attr_timestamp_mode);
 	device_remove_file(dev, &dev_attr_basetime_clock_id);
+	device_remove_file(dev, &dev_attr_firmware_version);
+	device_remove_file(dev, &dev_attr_ch);
+	device_remove_file(dev, &dev_attr_sync_pulse);
 
 	usbtrx_dev = dev_get_drvdata(dev);
 	if (usbtrx_dev == NULL) {

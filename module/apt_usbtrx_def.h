@@ -190,6 +190,7 @@ struct apt_usbtrx_dev_s {
 	struct task_struct *tx_thread; /*!< */
 	int ch; /*!< */
 	char serial_no[APT_USBTRX_SERIAL_NO_LENGTH + 1]; /*!< */
+	enum APT_USBTRX_SYNC_PULSE sync_pulse; /*!< */
 	apt_usbtrx_firmware_version_t fw_ver; /*!< */
 	atomic_t tx_buffer_rate; /*!< */
 	struct completion rx_done; /*!< */

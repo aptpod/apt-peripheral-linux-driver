@@ -92,16 +92,11 @@ int apt_usbtrx_unique_can_dispatch_msg(apt_usbtrx_dev_t *dev, u8 *data, apt_usbt
 
 	switch (msg->id) {
 	case APT_USBTRX_CMD_NotifyRecvCANFrame: {
-		bool empty;
 		int if_type = atomic_read(&unique_data->if_type);
 
 		if (if_type == APT_USBTRX_CAN_IF_TYPE_FILE) {
-			empty = apt_usbtrx_ringbuffer_is_empty(&dev->rx_data);
 			apt_usbtrx_ringbuffer_write(&dev->rx_data, msg->payload, msg->payload_size);
-
-			if (empty == true) {
-				wake_up_interruptible(&dev->rx_data.wq);
-			}
+			wake_up_interruptible(&dev->rx_data.wq);
 		} else if (if_type == APT_USBTRX_CAN_IF_TYPE_NET) {
 #ifdef SUPPORT_NETDEV
 			apt_usbtrx_unique_can_rx_can_msg(dev,

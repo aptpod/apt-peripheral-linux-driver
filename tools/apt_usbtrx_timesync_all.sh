@@ -3,10 +3,10 @@
 # Copyright (c) 2021, aptpod,Inc.
 #
 
-PROGDIR=/usr/local/bin
-ENABLETS=${PROGDIR}/apt_usbtrx_enablets
-RESETTS=${PROGDIR}/apt_usbtrx_resetts
-SERIALNO=${PROGDIR}/apt_usbtrx_serial_no
+PATH="$PATH:/usr/local/bin"
+ENABLETS=apt_usbtrx_enablets
+RESETTS=apt_usbtrx_resetts
+SERIALNO=apt_usbtrx_serial_no
 
 : ${BASETIME_CLOCK_ID:=CLOCK_MONOTONIC_RAW}
 

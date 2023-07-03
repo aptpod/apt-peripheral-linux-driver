@@ -293,16 +293,28 @@ static const struct iio_enum ep1_ag08a_hw_timestamp_en_enum = {
 
 static const struct iio_chan_spec_ext_info ep1_ag08a_in_volt_ext_info[] = {
 	IIO_ENUM("range", IIO_SEPARATE, &ep1_ag08a_in_volt_range_enum),
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
+	IIO_ENUM_AVAILABLE("range", IIO_SHARED_BY_TYPE, &ep1_ag08a_in_volt_range_enum),
+#else
 	IIO_ENUM_AVAILABLE("range", &ep1_ag08a_in_volt_range_enum),
+#endif
 	IIO_ENUM("sampling_frequency", IIO_SHARED_BY_TYPE, &ep1_ag08a_in_volt_samp_freq_enum),
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
+	IIO_ENUM_AVAILABLE("sampling_frequency", IIO_SHARED_BY_TYPE, &ep1_ag08a_in_volt_samp_freq_enum),
+#else
 	IIO_ENUM_AVAILABLE("sampling_frequency", &ep1_ag08a_in_volt_samp_freq_enum),
+#endif
 	IIO_ENUM("hardware_timestamp_en", IIO_SHARED_BY_ALL, &ep1_ag08a_hw_timestamp_en_enum),
 	{},
 };
 
 static const struct iio_chan_spec_ext_info ep1_ag08a_out_volt_ext_info[] = {
 	IIO_ENUM("waveform_type", IIO_SHARED_BY_TYPE, &ep1_ag08a_out_volt_waveform_type_enum),
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
+	IIO_ENUM_AVAILABLE("waveform_type", IIO_SHARED_BY_TYPE, &ep1_ag08a_out_volt_waveform_type_enum),
+#else
 	IIO_ENUM_AVAILABLE("waveform_type", &ep1_ag08a_out_volt_waveform_type_enum),
+#endif
 	{},
 };
 
@@ -565,7 +577,12 @@ int ep1_ag08a_create_iiodev(struct usb_interface *intf, const struct usb_device_
 	indio_dev->num_channels = ARRAY_SIZE(ep1_ag08a_channels);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0)
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
+	ret = devm_iio_kfifo_buffer_setup(&intf->dev, indio_dev, &ep1_ag08a_buffer_ops);
+#else
 	ret = devm_iio_kfifo_buffer_setup(&intf->dev, indio_dev, INDIO_BUFFER_SOFTWARE, &ep1_ag08a_buffer_ops);
+#endif
 	if (ret) {
 		EMSG("failed to setup iio buffer: %d", ret);
 		return ret;

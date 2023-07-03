@@ -11,6 +11,13 @@
 int
 main(void)
 {
+    /*
+     * Set device path.
+     * You can check the serial number of the device path
+     * and the channel number (interface number) with the following command.
+     * e.g.
+     *   udevadm info --query=property /dev/aptUSB1 | grep -e ID_SERIAL -e ID_USB_INTERFACE_NUM
+     */
     const char* devpath = "/dev/aptUSB1";
     int fd;
     int result;
@@ -48,7 +55,11 @@ main(void)
     }
 
     {
-        /* CAN Frame buffer */
+        /*
+         * CAN Frame buffer
+         * The data format of the CAN frame is as follows.
+         * https://github.com/aptpod/apt-peripheral-linux-driver/blob/main/docs/EP1-CH02A.ja.md#can-frame
+         */
         const unsigned char buf[] = {
             0x01, 0x00, 0x00, 0x00,                        // id and frame type
             0x08,                                          // dlc

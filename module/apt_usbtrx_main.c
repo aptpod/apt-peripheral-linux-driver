@@ -250,6 +250,7 @@ STATIC int apt_usbtrx_init_instance(apt_usbtrx_dev_t *dev)
 	dev->tx_thread = NULL;
 	dev->ch = 0;
 	memset(dev->serial_no, '\0', APT_USBTRX_SERIAL_NO_LENGTH + 1);
+	dev->sync_pulse = APT_USBTRX_SYNC_PULSE_SOURCE;
 	dev->fw_ver.major = 0;
 	dev->fw_ver.minor = 0;
 	dev->fw_ver.revision = 0;
@@ -435,6 +436,7 @@ static int apt_usbtrx_init(struct usb_interface *intf, const struct usb_device_i
 		return RESULT_Failure;
 	}
 	memcpy(dev->serial_no, serial_no, serial_no_size);
+	dev->sync_pulse = sync_pulse;
 	IMSG("ch=%d, sync pulse=%d, serial no=%s", ch, sync_pulse, serial_no);
 
 	/* version logging */
