@@ -20,6 +20,17 @@ EDGEPLANT Peripherals の詳細については[製品のホームページ](http
 - GNU make
 - Linux headers (kernel v4.4 以上)
 
+このデバイスドライバを使用するためには、以下のカーネルコンフィグが必要となります。
+
+- SocketCAN
+  - CONFIG_NET
+  - CONFIG_CAN
+  - CONFIG_CAN_DEV
+- IIO
+  - CONFIG_IIO
+  - CONFIG_IIO_BUFFER
+  - CONFIG_IIO_KFIFO_BUF
+
 ### Installing
 
 1. リポジトリをクローンします。

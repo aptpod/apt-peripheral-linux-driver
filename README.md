@@ -19,6 +19,17 @@ To build this device driver, the following packages are required.
 - GNU make
 - Linux headers (kernel v4.4 and above)
 
+To use this device driver, the following kernel configurations are required.
+
+- SocketCAN
+  - CONFIG_NET
+  - CONFIG_CAN
+  - CONFIG_CAN_DEV
+- IIO
+  - CONFIG_IIO
+  - CONFIG_IIO_BUFFER
+  - CONFIG_IIO_KFIFO_BUF
+
 ### Installation
 
 1. Clone this repository.
