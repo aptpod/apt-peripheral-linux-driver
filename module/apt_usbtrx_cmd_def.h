@@ -61,7 +61,7 @@ enum APT_USBTRX_CMD {
 #define APT_USBTRX_CMD_LENGTH_NACK (5)
 
 #define APT_USBTRX_CMD_MIN_LENGTH (4)
-#define APT_USBTRX_CMD_MAX_LENGTH (36)
+#define APT_USBTRX_CMD_MAX_LENGTH (82) /* EP1_CF02A_CMD_LENGTH_NOTIFY_RECV_CAN_FRAME */
 
 /*!
  * @brief command data length (not payload size)

@@ -18,22 +18,25 @@ Socket CAN を利用して CAN データの送受信を行う方法について�
 Socket CAN interface の設定を行います。以下は `can0` のビットレートを `500kbps` に設定する例です。
 
 ```sh
+sudo ip link set can0 down
 sudo ip link set can0 type can bitrate 500000
-sudo ifconfig can0 up
+sudo ip link set can0 up
 ```
 
 ビットレートではなくビットタイミングによって動作設定することも可能です。
 
 ```sh
+sudo ip link set can0 down
 sudo ip link set can0 type can tq 133 prop-seg 6 phase-seg1 6 phase-seg2 2 sjw 1
+sudo ip link set can0 up
 ```
 
 CAN-USB Interface を受信のみで動作させたい場合は、`listen-only` を設定します。`listen-only` が `on` になっていると、ACK を含めた一切の CAN フレーム送信を行わないようになります。
 
 ```sh
-sudo ifconfig can0 down
+sudo ip link set can0 down
 sudo ip link set can0 type can listen-only on
-sudo ifconfig can0 up
+sudo ip link set can0 up
 ```
 
 ### Receive can frame
@@ -41,7 +44,7 @@ sudo ifconfig can0 up
 `candump` を利用することで、CAN フレームを受信することができます。
 
 ```sh
-candump -ta -H can0
+candump -ta -H -L can0
 ```
 
 ### Send can frame
@@ -92,7 +95,7 @@ CAN Type 部分は以下の形式になります。
 | name           | length | order | sign | description                            |
 | :------------- | -----: | :---- | :--- | :------------------------------------- |
 | CAN ID         |  29bit | LE    | U    | CAN ID                                 |
-| CAN Frame Type |   1bit | -     | U    | CAN フレーム種別 (0:データ/1:フレーム) |
+| CAN Frame Type |   1bit | -     | U    | CAN フレーム種別 (0:データフレーム/1:リモートフレーム) |
 | CAN ID Type    |   1bit | -     | U    | CAN ID Type (0:標準 ID/1:拡張 ID)      |
 | CAN DLC        |   4bit | -     | U    | CAN DLC                                |
 | CAN Data       |  8byte | -     | U    | CAN データ                             |
@@ -128,7 +131,7 @@ ssize_t rsize = read(fd, buffer, sizeof(buffer));
 | name      | length | order | sign | description                      |
 | :-------- | -----: | :---- | :--- | :------------------------------- |
 | Time Sec  |  4byte | LE    | U    | 基準時刻からの経過時間（秒）     |
-| Time USec |  4byte | LE    | U    | 基準時刻からの経過時間（ミリ秒） |
+| Time USec |  4byte | LE    | U    | 基準時刻からの経過時間（マイクロ秒） |
 | CAN Frame |      - | -     | -    | [CAN フレーム](#can-frame)       |
 
 ### Write CAN data

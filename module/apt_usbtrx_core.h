@@ -25,6 +25,11 @@ int apt_usbtrx_setup_tx_urb(apt_usbtrx_dev_t *dev, u8 *data, int data_size);
 int apt_usbtrx_send_msg(apt_usbtrx_dev_t *dev, u8 *data, int data_size);
 
 /*!
+ * @brief wait for message with timeout
+ */
+int apt_usbtrx_wait_msg_timeout(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8 *data, int data_size, unsigned int timeout_msec);
+
+/*!
  * @brief wait for message
  */
 int apt_usbtrx_wait_msg(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8 *data, int data_size);

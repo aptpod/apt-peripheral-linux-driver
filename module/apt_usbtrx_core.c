@@ -417,15 +417,16 @@ int apt_usbtrx_send_msg(apt_usbtrx_dev_t *dev, u8 *data, int data_size)
 }
 
 /*!
- * @brief wait for message
+ * @brief wait for message with timeout
  */
-int apt_usbtrx_wait_msg(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8 *data, int data_size)
+int apt_usbtrx_wait_msg_timeout(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8 *data, int data_size,
+				unsigned int timeout_msec)
 {
 	u8 *buf;
 	int recv_size;
 	int result;
 	int pos;
-	unsigned long timeout = jiffies + msecs_to_jiffies(APT_USBTRX_RECV_TIMEOUT);
+	unsigned long timeout = jiffies + msecs_to_jiffies(timeout_msec);
 
 	CHKMSG("ENTER");
 	DMSG("%s(): ack=0x%02x, nack=0x%02x, data size=%d", __func__, ack_id, nack_id, data_size);
@@ -442,8 +443,8 @@ int apt_usbtrx_wait_msg(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8 *data, 
 		rx_ongoing = atomic_read(&dev->rx_ongoing);
 		if (rx_ongoing == true) {
 			DMSG("wait_for_completion_timeout()..");
-			result = wait_for_completion_timeout(&dev->rx_complete.complete,
-							     msecs_to_jiffies(APT_USBTRX_RECV_TIMEOUT));
+			result =
+				wait_for_completion_timeout(&dev->rx_complete.complete, msecs_to_jiffies(timeout_msec));
 			if (result == 0) {
 				WMSG("wait_for_completion_timeout().. Error, <errno:%d>", result);
 				kfree(buf);
@@ -455,7 +456,7 @@ int apt_usbtrx_wait_msg(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8 *data, 
 		} else {
 			DMSG("usb_bulk_msg()..");
 			result = usb_bulk_msg(dev->udev, usb_rcvbulkpipe(dev->udev, dev->bulk_in->bEndpointAddress),
-					      buf, data_size, &recv_size, APT_USBTRX_RECV_TIMEOUT);
+					      buf, data_size, &recv_size, timeout_msec);
 			if (result != 0) {
 				EMSG("usb_bulk_msg().. Error, <errno:%d> data size=%d>", result, data_size);
 				kfree(buf);
@@ -500,6 +501,14 @@ int apt_usbtrx_wait_msg(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8 *data, 
 	EMSG("%s(): msg is not coming, <id:0x%02x, 0x%02x>", __func__, ack_id, nack_id);
 	kfree(buf);
 	return RESULT_Failure;
+}
+
+/*!
+ * @brief wait for message
+ */
+int apt_usbtrx_wait_msg(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8 *data, int data_size)
+{
+	return apt_usbtrx_wait_msg_timeout(dev, ack_id, nack_id, data, data_size, APT_USBTRX_RECV_TIMEOUT);
 }
 
 /*!

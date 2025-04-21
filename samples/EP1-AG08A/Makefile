@@ -7,7 +7,8 @@ ARFLAGS = rv
 
 INCDIR = -I../../module
 
-OBJS = $(SRCS:%=%.o)
+SRCS = read_analog.c
+OBJS = $(SRCS:.c=.o)
 
 .PHONY: all clean
 all: $(TARGETS)
@@ -19,4 +20,4 @@ read_analog: read_analog.o
 	$(CC) $(CXXFLAGS) -c $< $(INCDIR) $(LIBDIR) $(LIBS)
 
 clean:
-	$(RM) $(TARGET) $(OBJS) *~
+	$(RM) $(TARGETS) $(OBJS) *~

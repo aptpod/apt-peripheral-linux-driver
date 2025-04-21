@@ -32,6 +32,13 @@ apt_usbtrx-objs += 	ep1_ag08a/ep1_ag08a_main.o \
 					ep1_ag08a/ep1_ag08a_sysfs.o \
 					ep1_ag08a/ep1_ag08a_iio.o
 
+apt_usbtrx-objs +=  ep1_cf02a/ep1_cf02a_main.o \
+                    ep1_cf02a/ep1_cf02a_fops.o \
+					ep1_cf02a/ep1_cf02a_cmd.o \
+					ep1_cf02a/ep1_cf02a_core.o \
+					ep1_cf02a/ep1_cf02a_msg.o \
+					ep1_cf02a/ep1_cf02a_sysfs.o
+
 apt_usbtrx-objs +=  ep1_ch02a/ep1_ch02a_main.o \
                     ep1_ch02a/ep1_ch02a_fops.o \
 					ep1_ch02a/ep1_ch02a_cmd.o \

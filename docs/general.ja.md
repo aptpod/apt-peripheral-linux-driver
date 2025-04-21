@@ -329,7 +329,7 @@ EDGEPLANT USB Peripherals で共通の sysfs 項目は以下の通りです。
 | ----------------- | ---- | ------------------------------------- |
 | skipcnt           | R    | バッファフルのため受信に失敗したデータフレーム合計サイズ |
 | timestamp_mode    | R    | タイムスタンプモード |
-| basetime_clock_id | R/W  | 基準時刻の取得方法 </br> `CLOCK_MONOTONIC_RAW` (デフォルト)  または `CLOCK_MONOTONIC_RAW` で設定可能 |
+| basetime_clock_id | R/W  | 基準時刻の取得方法 </br> `CLOCK_MONOTONIC_RAW` (デフォルト)  または `CLOCK_MONOTONIC` で設定可能 |
 | firmware_version  | R    | ファームウェアバージョン |
 | ch                | R    | チャンネル |
 | sync_pulse        | R    | デバイスの同期状態 |

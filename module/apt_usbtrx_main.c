@@ -23,6 +23,7 @@
 
 #include "ap_ct2a/ap_ct2a.h"
 #include "ep1_ch02a/ep1_ch02a.h"
+#include "ep1_cf02a/ep1_cf02a.h"
 #include "ep1_ag08a/ep1_ag08a.h"
 
 /*!
@@ -83,6 +84,7 @@ static const struct usb_device_id apt_usbtrx_table[] = {
 	{ USB_DEVICE(APTPOD_DEVP_VENDOR_ID, AP_CT2A_DEVP_PRODUCT_ID) },
 	{ USB_DEVICE(APTPOD_VENDOR_ID, EP1_CH02A_PRODUCT_ID) },
 	{ USB_DEVICE(APTPOD_VENDOR_ID, EP1_AG08A_PRODUCT_ID) },
+	{ USB_DEVICE(APTPOD_VENDOR_ID, EP1_CF02A_PRODUCT_ID) },
 	{ }
 	// clang-format on
 };
@@ -162,6 +164,30 @@ STATIC int apt_usbtrx_init_function(struct usb_interface *intf, apt_usbtrx_dev_t
 			.open = apt_usbtrx_unique_can_open,
 			.close = apt_usbtrx_unique_can_close,
 			.write_bulk_callback = apt_usbtrx_unique_can_write_bulk_callback,
+		};
+		break;
+	case EP1_CF02A_PRODUCT_ID:
+		dev->device_type = APT_USBTRX_DEVICE_TYPE_CAN_FD;
+		dev->rx_data_size = EP1_CF02A_RXDATA_BUFFER_SIZE;
+		dev->unique_func = (apt_usbtrx_device_unique_function_t){
+			.init_data = ep1_cf02a_init_data,
+			.free_data = ep1_cf02a_free_data,
+			.init = ep1_cf02a_init,
+			.terminate = ep1_cf02a_terminate,
+			.is_need_init_reset_ts = ep1_cf02a_is_need_init_reset_ts,
+			.dispatch_msg = ep1_cf02a_dispatch_msg,
+			.get_read_payload_size = ep1_cf02a_get_read_payload_size,
+			.get_write_payload_size = ep1_cf02a_get_write_payload_size,
+			.get_read_payload_timestamp = ep1_cf02a_get_read_payload_timestamp,
+			.get_write_cmd_id = ep1_cf02a_get_write_cmd_id,
+			.get_fw_size = ep1_cf02a_get_fw_size,
+			.is_device_input_start = ep1_cf02a_is_device_start,
+			.ioctl = ep1_cf02a_ioctl,
+			.sysfs_init = ep1_cf02a_sysfs_init,
+			.sysfs_term = ep1_cf02a_sysfs_term,
+			.open = ep1_cf02a_open,
+			.close = ep1_cf02a_close,
+			.write_bulk_callback = ep1_cf02a_write_bulk_callback,
 		};
 		break;
 	case EP1_AG08A_PRODUCT_ID:
@@ -319,6 +345,7 @@ static int is_support_revision_command(int device_type, int major, int minor)
 		}
 		break;
 	case APT_USBTRX_DEVICE_TYPE_ANALOG:
+	case APT_USBTRX_DEVICE_TYPE_CAN_FD:
 		support = true;
 		break;
 	}

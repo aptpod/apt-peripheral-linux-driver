@@ -1,5 +1,7 @@
 #!/bin/bash -ex
 
+export DEBIAN_FRONTEND=noninteractive
+
 DRIVER_FOLDER="drivers/aptpod"
 APT_USBTRX_FOLDER="drivers/aptpod/apt_usbtrx"
 TEST_APT_USBTRX_FOLDER="drivers/aptpod/test_apt_usbtrx"

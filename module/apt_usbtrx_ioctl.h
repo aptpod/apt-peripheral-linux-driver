@@ -7,6 +7,10 @@
 #ifndef __APT_USBTRX_FOPS_DEF_H__
 #define __APT_USBTRX_FOPS_DEF_H__
 
+#if !defined(__KERNEL__)
+#define __user
+#endif
+
 #include <linux/ioctl.h>
 #include <linux/version.h>
 
@@ -348,6 +352,237 @@ struct ep1_ch02a_ioctl_get_bit_timing_s {
 typedef struct ep1_ch02a_ioctl_get_bit_timing_s ep1_ch02a_ioctl_get_bit_timing_t;
 
 /* ----------------------------------------------------------- */
+/* ------------------------ EP1-CF02A ------------------------ */
+/* ----------------------------------------------------------- */
+
+#define EP1_CF02A_CAN_PACKET_SIZE (78)
+#define EP1_CF02A_STORE_DATA_ID_MAX_LENGTH (32)
+
+/**
+ * struct ep1_cf02a_ioctl_silent_mode_s - Silent mode definition.
+ * @silent: Device is listen only or not.
+ */
+struct ep1_cf02a_ioctl_silent_mode_s {
+	bool silent;
+};
+typedef struct ep1_cf02a_ioctl_silent_mode_s ep1_cf02a_ioctl_get_silent_mode_t;
+typedef struct ep1_cf02a_ioctl_silent_mode_s ep1_cf02a_ioctl_set_silent_mode_t;
+
+/**
+ * struct ep1_cf02a_ioctl_fd_mode_s - FD mode definition.
+ * @fd: Enable CAN FD.
+ */
+struct ep1_cf02a_ioctl_fd_mode_s {
+	bool fd;
+};
+typedef struct ep1_cf02a_ioctl_fd_mode_s ep1_cf02a_ioctl_get_fd_mode_t;
+typedef struct ep1_cf02a_ioctl_fd_mode_s ep1_cf02a_ioctl_set_fd_mode_t;
+
+/**
+ * struct ep1_cf02a_ioctl_iso_mode_s - ISO mode definition.
+ * @non_iso_mode: ISO compliant(false) or non-ISO compliant(true).
+ */
+struct ep1_cf02a_ioctl_iso_mode_s {
+	bool non_iso_mode;
+};
+typedef struct ep1_cf02a_ioctl_iso_mode_s ep1_cf02a_ioctl_get_iso_mode_t;
+typedef struct ep1_cf02a_ioctl_iso_mode_s ep1_cf02a_ioctl_set_iso_mode_t;
+
+/**
+ * struct ep1_cf02a_ioctl_bitrate_s - Arbitration phase bitrate definition.
+ * @bitrate: bitrate bps.
+ * @sample_point: sample point (e.g. 875 means 87.5%). If set to 0, the recommended value by CiA will be used.
+ */
+struct ep1_cf02a_ioctl_bitrate_s {
+	int bitrate;
+	int sample_point;
+};
+typedef struct ep1_cf02a_ioctl_bitrate_s ep1_cf02a_ioctl_get_bitrate_t;
+typedef struct ep1_cf02a_ioctl_bitrate_s ep1_cf02a_ioctl_set_bitrate_t;
+typedef struct ep1_cf02a_ioctl_bitrate_s ep1_cf02a_ioctl_get_data_bitrate_t;
+typedef struct ep1_cf02a_ioctl_bitrate_s ep1_cf02a_ioctl_set_data_bitrate_t;
+
+/**
+ * struct ep1_cf02a_ioctl_bit_timing_s - CAN Bit timing definition.
+ * @prop_seg: Propagation segment.
+ * @phase_seg1: Phase segment 1.
+ * @phase_seg2: Phase segment 2.
+ * @sjw: Synchronization Jump Width.
+ * @brp: Bitrate prescaler.
+ */
+struct ep1_cf02a_ioctl_bit_timing_s {
+	int prop_seg;
+	int phase_seg1;
+	int phase_seg2;
+	int sjw;
+	int brp;
+};
+typedef struct ep1_cf02a_ioctl_bit_timing_s ep1_cf02a_ioctl_bit_timing_t;
+typedef struct ep1_cf02a_ioctl_bit_timing_s ep1_cf02a_ioctl_get_bit_timing_t;
+typedef struct ep1_cf02a_ioctl_bit_timing_s ep1_cf02a_ioctl_set_bit_timing_t;
+typedef struct ep1_cf02a_ioctl_bit_timing_s ep1_cf02a_ioctl_get_data_bit_timing_t;
+typedef struct ep1_cf02a_ioctl_bit_timing_s ep1_cf02a_ioctl_set_data_bit_timing_t;
+
+/**
+ * struct ep1_cf02a_ioctl_tx_rx_control_s - CAN transceiver control definition.
+ * @start: CAN transceiver is working or not.
+ */
+struct ep1_cf02a_ioctl_tx_rx_control_s {
+	bool start;
+};
+typedef struct ep1_cf02a_ioctl_tx_rx_control_s ep1_cf02a_ioctl_get_tx_rx_control_t;
+typedef struct ep1_cf02a_ioctl_tx_rx_control_s ep1_cf02a_ioctl_set_tx_rx_control_t;
+
+/**
+ * struct ep1_cf02a_ioctl_get_device_timestamp_reset_time_s - Device timestamp reset time definition.
+ * @reset_time: The device time when the timestamp was reset.
+ */
+struct ep1_cf02a_ioctl_get_device_timestamp_reset_time_s {
+	struct timespec ts;
+};
+typedef struct ep1_cf02a_ioctl_get_device_timestamp_reset_time_s ep1_cf02a_ioctl_get_device_timestamp_reset_time_t;
+
+/**
+ * struct ep1_cf02a_ioctl_rtc_time_s - RTC time definition.
+ * @weekday: Weekday. 1: Monday - 7: Sunday.
+ * @month: Month. 1: January - 12: December.
+ * @date: Date. 1-31.
+ * @year: Year. 0-99. 0 means 2000, 99 means 2099.
+ * @hour: Hour. 0-23.
+ * @minute: Minute. 0-59.
+ * @second: Second. 0-59.
+ * @microsecond: Microsecond. 0-999999.
+ */
+struct ep1_cf02a_ioctl_rtc_time_s {
+	unsigned int weekday;
+	unsigned int month;
+	unsigned int date;
+	unsigned int year;
+	unsigned int hour;
+	unsigned int minute;
+	unsigned int second;
+	unsigned int microsecond;
+};
+typedef struct ep1_cf02a_ioctl_rtc_time_s ep1_cf02a_ioctl_rtc_time_t;
+typedef struct ep1_cf02a_ioctl_rtc_time_s ep1_cf02a_ioctl_get_rtc_time_t;
+
+/**
+ * enum EP1_CF02A_STORE_DATA_STATE - Store data state
+ * @EP1_CF02A_STORE_DATA_STATE_NOT_STORING: Storing data is supported, but not currently in progress.
+ * @EP1_CF02A_STORE_DATA_STATE_STORING: Storing data is supported and currently in progress.
+ * @EP1_CF02A_STORE_DATA_STATE_NOT_SUPPORTED: Storing data is not supported, for example, when the store data media is unavailable.
+ */
+enum EP1_CF02A_STORE_DATA_STATE {
+	EP1_CF02A_STORE_DATA_STATE_NOT_STORING = 0,
+	EP1_CF02A_STORE_DATA_STATE_STORING,
+	EP1_CF02A_STORE_DATA_STATE_NOT_SUPPORTED,
+	EP1_CF02A_STORE_DATA_STATE_MAX
+};
+
+/**
+ * struct ep1_cf02a_ioctl_get_current_store_data_state_s - Current store data state definition.
+ * @state: Current store data state. See enum EP1_CF02A_STORE_DATA_STATE.
+ * @id: Current store data id. If current store data is not exist, this value is all zero.
+ */
+struct ep1_cf02a_ioctl_get_current_store_data_state_s {
+	int state;
+	char id[EP1_CF02A_STORE_DATA_ID_MAX_LENGTH];
+};
+typedef struct ep1_cf02a_ioctl_get_current_store_data_state_s ep1_cf02a_ioctl_get_current_store_data_state_t;
+
+/**
+ * struct ep1_cf02a_ioctl_get_store_data_id_list_count_s - Store data id list count definition.
+ * @count: Store data id list count.
+ */
+struct ep1_cf02a_ioctl_get_store_data_id_list_count_s {
+	unsigned int count;
+};
+typedef struct ep1_cf02a_ioctl_get_store_data_id_list_count_s ep1_cf02a_ioctl_get_store_data_id_list_count_t;
+
+/**
+ * struct ep1_cf02a_ioctl_get_store_data_id_list_s - Store data id list definition.
+ * @count: [IN] Store data id list count. User must set this value.
+ * @id: [OUT] Store data id list. User must allocate memory for this list.
+ *  The id list size must be count * EP1_CF02A_STORE_DATA_ID_MAX_LENGTH.
+ */
+struct ep1_cf02a_ioctl_get_store_data_id_list_s {
+	unsigned int count;
+	char (*id_list)[EP1_CF02A_STORE_DATA_ID_MAX_LENGTH];
+};
+typedef struct ep1_cf02a_ioctl_get_store_data_id_list_s ep1_cf02a_ioctl_get_store_data_id_list_t;
+
+/**
+ * struct ep1_cf02a_ioctl_start_time_s - Start time definition.
+ * @rtc: RTC time.
+ * @ts: Timestamp.
+ */
+struct ep1_cf02a_ioctl_start_time_s {
+	ep1_cf02a_ioctl_rtc_time_t rtc;
+	struct timespec ts;
+};
+typedef struct ep1_cf02a_ioctl_start_time_s ep1_cf02a_ioctl_start_time_t;
+
+/**
+ * struct ep1_cf02a_ioctl_timestamp_reset_time_s - Timestamp reset time definition.
+ * @device_ts: Device timestamp.
+ * @host_monotonic: Host monotonic time.
+ */
+struct ep1_cf02a_ioctl_timestamp_reset_time_s {
+	struct timespec device_ts;
+	struct timespec host_monotonic;
+};
+typedef struct ep1_cf02a_ioctl_timestamp_reset_time_s ep1_cf02a_ioctl_timestamp_reset_time_t;
+
+/**
+ * struct ep1_cf02a_ioctl_get_store_data_meta_s - Store data meta definition.
+ * @id: [IN] Store data id to get meta.
+ * @start_time: [OUT] Start time.
+ * @reset_time: [OUT] Timestamp reset time.
+ * @can_frame_count: [OUT] CAN frame count.
+ */
+struct ep1_cf02a_ioctl_get_store_data_meta_s {
+	char id[EP1_CF02A_STORE_DATA_ID_MAX_LENGTH];
+	ep1_cf02a_ioctl_start_time_t start_time;
+	ep1_cf02a_ioctl_timestamp_reset_time_t reset_time;
+	unsigned long long can_frame_count;
+};
+typedef struct ep1_cf02a_ioctl_get_store_data_meta_s ep1_cf02a_ioctl_get_store_data_meta_t;
+
+/**
+ * struct ep1_cf02a_ioctl_store_data_rx_control_s - Store data RX control definition.
+ * @id: [IN] Store data id to control.
+ * @start: [IN(Set)/OUT(Get)] Start or stop sending store data.
+ * @interval: [IN(Set)/OUT(Get)] Sending interval in ms.
+ */
+struct ep1_cf02a_ioctl_store_data_rx_control_s {
+	char id[EP1_CF02A_STORE_DATA_ID_MAX_LENGTH];
+	bool start;
+	int interval;
+};
+typedef struct ep1_cf02a_ioctl_store_data_rx_control_s ep1_cf02a_ioctl_get_store_data_rx_control_t;
+typedef struct ep1_cf02a_ioctl_store_data_rx_control_s ep1_cf02a_ioctl_set_store_data_rx_control_t;
+
+/**
+ * struct ep1_cf02a_ioctl_read_store_data_s - Read store data definition.
+ * @buffer: [OUT] Buffer to store data. User must allocate memory for this buffer.
+ * @count: [IN] Buffer size.
+ */
+struct ep1_cf02a_ioctl_read_store_data_s {
+	char __user *buffer;
+	size_t count;
+};
+typedef struct ep1_cf02a_ioctl_read_store_data_s ep1_cf02a_ioctl_read_store_data_t;
+
+/**
+ * struct ep1_cf02a_ioctl_delete_store_data_s - Delete store data definition.
+ * @id: Store data id to delete.
+ */
+struct ep1_cf02a_ioctl_delete_store_data_s {
+	char id[EP1_CF02A_STORE_DATA_ID_MAX_LENGTH];
+};
+typedef struct ep1_cf02a_ioctl_delete_store_data_s ep1_cf02a_ioctl_delete_store_data_t;
+
+/* ----------------------------------------------------------- */
 /* ------------------------ EP1-AG08A ------------------------ */
 /* ----------------------------------------------------------- */
 
@@ -538,5 +773,41 @@ typedef ep1_ag08a_ioctl_analog_output_t pa_agu081_ioctl_analog_output_t;
 #define EP1_CH02A_IOCTL_RESET_CAN_SUMMARY APT_USBTRX_IOCTL_RESET_CAN_SUMMARY
 #define EP1_CH02A_IOCTL_START_CAN APT_USBTRX_IOCTL_START_CAN
 #define EP1_CH02A_IOCTL_STOP_CAN APT_USBTRX_IOCTL_STOP_CAN
+
+#define EP1_CF02A_IOCTL_GET_SILENT_MODE _IOR(APT_USBTRX_IOC_TYPE, 0x31, ep1_cf02a_ioctl_get_silent_mode_t)
+#define EP1_CF02A_IOCTL_SET_SILENT_MODE _IOW(APT_USBTRX_IOC_TYPE, 0x32, ep1_cf02a_ioctl_set_silent_mode_t)
+#define EP1_CF02A_IOCTL_GET_ISO_MODE _IOR(APT_USBTRX_IOC_TYPE, 0x33, ep1_cf02a_ioctl_get_iso_mode_t)
+#define EP1_CF02A_IOCTL_SET_ISO_MODE _IOW(APT_USBTRX_IOC_TYPE, 0x34, ep1_cf02a_ioctl_set_iso_mode_t)
+#define EP1_CF02A_IOCTL_GET_BITRATE _IOR(APT_USBTRX_IOC_TYPE, 0x35, ep1_cf02a_ioctl_get_bitrate_t)
+#define EP1_CF02A_IOCTL_SET_BITRATE _IOW(APT_USBTRX_IOC_TYPE, 0x36, ep1_cf02a_ioctl_set_bitrate_t)
+#define EP1_CF02A_IOCTL_GET_DATA_BITRATE _IOR(APT_USBTRX_IOC_TYPE, 0x37, ep1_cf02a_ioctl_get_data_bitrate_t)
+#define EP1_CF02A_IOCTL_SET_DATA_BITRATE _IOW(APT_USBTRX_IOC_TYPE, 0x38, ep1_cf02a_ioctl_set_data_bitrate_t)
+#define EP1_CF02A_IOCTL_GET_BIT_TIMING _IOR(APT_USBTRX_IOC_TYPE, 0x39, ep1_cf02a_ioctl_get_bit_timing_t)
+#define EP1_CF02A_IOCTL_SET_BIT_TIMING _IOW(APT_USBTRX_IOC_TYPE, 0x3a, ep1_cf02a_ioctl_set_bit_timing_t)
+#define EP1_CF02A_IOCTL_GET_DATA_BIT_TIMING _IOR(APT_USBTRX_IOC_TYPE, 0x3b, ep1_cf02a_ioctl_get_data_bit_timing_t)
+#define EP1_CF02A_IOCTL_SET_DATA_BIT_TIMING _IOW(APT_USBTRX_IOC_TYPE, 0x3c, ep1_cf02a_ioctl_set_data_bit_timing_t)
+#define EP1_CF02A_IOCTL_GET_TX_RX_CONTROL _IOR(APT_USBTRX_IOC_TYPE, 0x3d, ep1_cf02a_ioctl_get_tx_rx_control_t)
+#define EP1_CF02A_IOCTL_SET_TX_RX_CONTROL _IOW(APT_USBTRX_IOC_TYPE, 0x3e, ep1_cf02a_ioctl_set_tx_rx_control_t)
+#define EP1_CF02A_IOCTL_RESET_CAN_SUMMARY APT_USBTRX_IOCTL_RESET_CAN_SUMMARY
+#define EP1_CF02A_IOCTL_GET_DEVICE_TIMESTAMP_RESET_TIME                                                                \
+	_IOR(APT_USBTRX_IOC_TYPE, 0x3f, ep1_cf02a_ioctl_get_device_timestamp_reset_time_t)
+#define EP1_CF02A_IOCTL_SET_HOST_TIMESTAMP_RESET_TIME _IO(APT_USBTRX_IOC_TYPE, 0x40)
+#define EP1_CF02A_IOCTL_GET_RTC_TIME _IOR(APT_USBTRX_IOC_TYPE, 0x41, ep1_cf02a_ioctl_get_rtc_time_t)
+#define EP1_CF02A_IOCTL_SET_RTC_TIME _IO(APT_USBTRX_IOC_TYPE, 0x42)
+#define EP1_CF02A_IOCTL_GET_CURRENT_STORE_DATA_STATE                                                                   \
+	_IOR(APT_USBTRX_IOC_TYPE, 0x43, ep1_cf02a_ioctl_get_current_store_data_state_t)
+#define EP1_CF02A_IOCTL_GET_STORE_DATA_ID_LIST_COUNT                                                                   \
+	_IOR(APT_USBTRX_IOC_TYPE, 0x44, ep1_cf02a_ioctl_get_store_data_id_list_count_t)
+#define EP1_CF02A_IOCTL_GET_STORE_DATA_ID_LIST _IOWR(APT_USBTRX_IOC_TYPE, 0x45, ep1_cf02a_ioctl_get_store_data_id_list_t)
+#define EP1_CF02A_IOCTL_GET_STORE_DATA_META _IOWR(APT_USBTRX_IOC_TYPE, 0x46, ep1_cf02a_ioctl_get_store_data_meta_t)
+#define EP1_CF02A_IOCTL_GET_STORE_DATA_RX_CONTROL                                                                      \
+	_IOWR(APT_USBTRX_IOC_TYPE, 0x47, ep1_cf02a_ioctl_get_store_data_rx_control_t)
+#define EP1_CF02A_IOCTL_SET_STORE_DATA_RX_CONTROL                                                                      \
+	_IOW(APT_USBTRX_IOC_TYPE, 0x48, ep1_cf02a_ioctl_set_store_data_rx_control_t)
+#define EP1_CF02A_IOCTL_READ_STORE_DATA _IOWR(APT_USBTRX_IOC_TYPE, 0x49, ep1_cf02a_ioctl_read_store_data_t)
+#define EP1_CF02A_IOCTL_DELETE_STORE_DATA _IOW(APT_USBTRX_IOC_TYPE, 0x4a, ep1_cf02a_ioctl_delete_store_data_t)
+#define EP1_CF02A_IOCTL_INIT_STORE_DATA_MEDIA _IO(APT_USBTRX_IOC_TYPE, 0x4b)
+#define EP1_CF02A_IOCTL_GET_FD_MODE _IOR(APT_USBTRX_IOC_TYPE, 0x4c, ep1_cf02a_ioctl_get_fd_mode_t)
+#define EP1_CF02A_IOCTL_SET_FD_MODE _IOW(APT_USBTRX_IOC_TYPE, 0x4d, ep1_cf02a_ioctl_set_fd_mode_t)
 
 #endif /* __APT_USBTRX_FOPS_DEF_H__ */

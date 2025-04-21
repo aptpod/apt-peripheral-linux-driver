@@ -156,6 +156,7 @@ typedef struct apt_usbtrx_firmware_version_s apt_usbtrx_firmware_version_t;
 enum APT_USBTRX_DEVICE_TYPE {
 	APT_USBTRX_DEVICE_TYPE_CAN = 0,
 	APT_USBTRX_DEVICE_TYPE_ANALOG,
+	APT_USBTRX_DEVICE_TYPE_CAN_FD,
 	APT_USBTRX_DEVICE_TYPE_MAX
 };
 

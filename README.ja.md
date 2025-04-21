@@ -6,6 +6,7 @@ EDGEPLANT USB ペリフェラルを Linux 上で利用するためのデバイ�
 本デバイスドライバをインストールすることで、以下の製品でデータの受信や送信を行えるようになります。
 
 - EDGEPLANT CAN-USB Interface
+- EDGEPLANT CAN FD USB Interface
 - EDGEPLANT ANALOG-USB Interface
 
 EDGEPLANT Peripherals の詳細については[製品のホームページ](https://www.aptpod.co.jp/products/edgeplant/edgeplant-peripherals)を参照してください。
@@ -32,6 +33,45 @@ EDGEPLANT Peripherals の詳細については[製品のホームページ](http
   - CONFIG_IIO_KFIFO_BUF
 
 ### Installing
+
+#### deb パッケージからのインストール
+
+1. アプトポッドの公開リポジトリを設定します。  
+   コマンド内の `${DISTRIBUTION}` には、ご使用の環境に応じて `ubuntu` または `debian` を指定してください。
+
+   ```sh
+   sudo apt-get update
+   sudo apt-get install -y \
+      apt-transport-https \
+      ca-certificates \
+      curl \
+      gnupg-agent \
+      lsb-release
+   sudo mkdir -p /etc/apt/keyrings
+   curl -fsSL https://repository.aptpod.jp/intdash-edge/linux/${DISTRIBUTION}/gpg | \
+      sudo gpg --dearmor -o /etc/apt/keyrings/intdash-edge.gpg
+   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/intdash-edge.gpg] \
+      https://repository.aptpod.jp/intdash-edge/linux/${DISTRIBUTION} $(lsb_release -cs) \
+      stable" \
+      | sudo tee /etc/apt/sources.list.d/intdash-edge.list
+   sudo apt-get update
+   ```
+
+2. apt-usbtrx-dkms パッケージをインストールします。
+
+   ```sh
+   sudo apt-get install apt-usbtrx-dkms
+   ```
+
+3. モジュールを読み込みます。
+
+   ```sh
+   sudo modprobe apt_usbtrx
+   ```
+
+DKMS を使用することで、カーネルが更新されるたびに自動的にドライバが再ビルドされます。
+
+#### ソースからビルドしてインストール
 
 1. リポジトリをクローンします。
 

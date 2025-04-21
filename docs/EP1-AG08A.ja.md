@@ -50,7 +50,7 @@ ssize_t rsize = read(fd, buffer, sizeof(buffer));
 | name        | length | order | sign | description                                        |
 | :---------- | -----: | :---- | :--- | :------------------------------------------------- |
 | Time Sec    |  4byte | LE    | U    | 基準時刻からの経過時間（秒）                       |
-| Time USec   |  4byte | LE    | U    | 基準時刻からの経過時間（ミリ秒）                   |
+| Time USec   |  4byte | LE    | U    | 基準時刻からの経過時間（マイクロ秒）                   |
 | Channel     |  1byte | -     | -    | チャンネルごとの起動状態 (0: Started/ 1: Stopped)  |
 | Analog Data |      - | LE    | -    | アナログデータ。2byte x 起動状態にあるチャンネル数 |
 
