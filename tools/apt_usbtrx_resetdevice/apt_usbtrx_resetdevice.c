@@ -1,5 +1,5 @@
 /*
- * ep1_cf02a_init_store_data_media.c - Initialize store data media.
+ * apt_usbtrx_resetdevice.c - Reset device.
  *
  * Copyright (C) 2024 aptpod Inc.
  */
@@ -15,7 +15,7 @@
 
 #include "apt_usbtrx_ioctl.h"
 
-#define PRGNAME "ep1_cf02a_init_store_data_media"
+#define PRGNAME "apt_usbtrx_resetdevice"
 #define PRGVERSION "1.0.0"
 
 enum
@@ -99,15 +99,11 @@ main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    result = ioctl(fd, EP1_CF02A_IOCTL_INIT_STORE_DATA_MEDIA);
+    result = ioctl(fd, APT_USBTRX_IOCTL_RESET_DEVICE);
     if (result == -1) {
-        printf("ioctl().. Error, <errno:%d> cmd=%s\n",
-               errno,
-               "EP1_CF02A_IOCTL_INIT_STORE_DATA_MEDIA");
+        printf("ioctl().. Error, <errno:%d> cmd=%s\n", errno, "RESET_TS");
         return EXIT_FAILURE;
     }
-
-    printf("Successfully initialized store data media.\n");
 
     close(fd);
 

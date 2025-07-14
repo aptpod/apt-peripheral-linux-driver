@@ -19,6 +19,7 @@
  * @brief product id
  */
 #define EP1_AG08A_PRODUCT_ID 0x102
+#define EP1_AG08A_MODEL_NAME "EP1-AG08A"
 
 /*!
  * @brief const value

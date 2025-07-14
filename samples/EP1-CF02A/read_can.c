@@ -54,10 +54,11 @@ timespec_add(struct timespec* ts, unsigned int sec, unsigned int nsec)
 static void
 print_canfd_frame(struct timespec* timestamp, struct canfd_frame* frame)
 {
-    printf("[%ld.%09ld] id: %x, len: %d, flags: %x, data: ",
+    printf("[%ld.%09ld] id: %x (%s), len: %d, flags: %x, data: ",
            timestamp->tv_sec,
            timestamp->tv_nsec,
-           frame->can_id,
+           (frame->can_id & CAN_EFF_FLAG) ? (frame->can_id & CAN_EFF_MASK) : (frame->can_id & CAN_SFF_MASK),
+           (frame->can_id & CAN_EFF_FLAG) ? "ext" : "std",
            frame->len,
            frame->flags);
     for (int i = 0; i < frame->len; ++i) {
@@ -69,11 +70,12 @@ print_canfd_frame(struct timespec* timestamp, struct canfd_frame* frame)
 static int
 help()
 {
-    printf("usage: read_can [options]");
+    printf("usage: read_can [options]\n");
     printf("options: \n");
     printf("  --device <path>, Set device path.\n");
     printf("  --bitrate <bps>, Set CAN bitrate.\n");
     printf("  --sample-point <sample-point>, Set CAN sample point.\n");
+    printf("  --fd <on|off>, Set CAN FD mode.\n");
     printf("  --dbitrate <bps>, Set CAN data bitrate\n");
     printf("  --dsample-point <sample-point>, Set CAN data sample point.\n");
     printf("  --skip-ioctl,  Skip ioctl for simultaneous read/write on one "
@@ -101,6 +103,7 @@ main(int argc, char* argv[])
     const char* devpath = "/dev/aptUSB0";
     int bitrate = 500000;
     int sample_point = 0;
+    bool fd_mode = true;
     int dbitrate = 2000000;
     int dsample_point = 0;
     bool skip_ioctl = false;
@@ -109,6 +112,7 @@ main(int argc, char* argv[])
         { "device", required_argument, NULL, 'd' },
         { "bitrate", required_argument, NULL, 'b' },
         { "sample-point", required_argument, NULL, 's' },
+        { "fd", required_argument, NULL, 'f' },
         { "dbitrate", required_argument, NULL, 'B' },
         { "dsample-point", required_argument, NULL, 'S' },
         { "skip-ioctl", no_argument, NULL, 'i' },
@@ -118,7 +122,7 @@ main(int argc, char* argv[])
 
     int opt;
     while ((opt = getopt_long(
-              argc, argv, "d:b:s:B:S:ih", long_options, NULL)) != -1) {
+              argc, argv, "d:b:s:f:B:S:ih", long_options, NULL)) != -1) {
         switch (opt) {
         case 'd':
             devpath = optarg;
@@ -128,6 +132,9 @@ main(int argc, char* argv[])
             break;
         case 's':
             sample_point = atoi(optarg);
+            break;
+        case 'f':
+            fd_mode = (strcmp(optarg, "on") == 0) ? true : false;
             break;
         case 'B':
             dbitrate = atoi(optarg);
@@ -155,8 +162,11 @@ main(int argc, char* argv[])
     printf("Device path: %s\n", devpath);
     printf("CAN bitrate: %d\n", bitrate);
     printf("CAN sample point: %d\n", sample_point);
-    printf("CAN data bitrate: %d\n", dbitrate);
-    printf("CAN data sample point: %d\n", dsample_point);
+    printf("CAN FD mode: %s\n", fd_mode ? "on" : "off");
+    if (fd_mode) {
+        printf("CAN data bitrate: %d\n", dbitrate);
+        printf("CAN data sample point: %d\n", dsample_point);
+    }
     printf("Skip ioctl: %s\n", skip_ioctl ? "true" : "false");
 
     /* Open device */
@@ -183,38 +193,6 @@ main(int argc, char* argv[])
             }
         }
 
-#if 0 // TODO: FD mode is not supported by firmware yet.
-        {
-            /*
-            * Setting up FD mode
-            */
-            ep1_cf02a_ioctl_set_fd_mode_t fd_mode;
-            fd_mode.fd = true;
-            result = ioctl(fd, EP1_CF02A_IOCTL_SET_FD_MODE, &fd_mode);
-            if (result == -1) {
-                printf("ioctl().. Error, <errno:%d> cmd=%s\n", errno, "EP1_CF02A_IOCTL_SET_FD_MODE");
-                close(fd);
-                return EXIT_FAILURE;
-            }
-        }
-#endif
-
-        {
-            /*
-             * Setting up ISO mode
-             */
-            ep1_cf02a_ioctl_set_iso_mode_t iso_mode;
-            iso_mode.non_iso_mode = false;
-            result = ioctl(fd, EP1_CF02A_IOCTL_SET_ISO_MODE, &iso_mode);
-            if (result == -1) {
-                printf("ioctl().. Error, <errno:%d> cmd=%s\n",
-                       errno,
-                       "EP1_CF02A_IOCTL_SET_ISO_MODE");
-                close(fd);
-                return EXIT_FAILURE;
-            }
-        }
-
         {
             /*
              * Setting up CAN bitrate
@@ -234,18 +212,50 @@ main(int argc, char* argv[])
 
         {
             /*
-             * Setting up CAN data bitrate
-             */
-            ep1_cf02a_ioctl_set_data_bitrate_t set_dbitrate;
-            set_dbitrate.bitrate = dbitrate;
-            set_dbitrate.sample_point = dsample_point;
-            result = ioctl(fd, EP1_CF02A_IOCTL_SET_DATA_BITRATE, &set_dbitrate);
+            * Setting up FD mode
+            */
+            ep1_cf02a_ioctl_set_fd_mode_t set_fd_mode;
+            set_fd_mode.fd = fd_mode;
+            result = ioctl(fd, EP1_CF02A_IOCTL_SET_FD_MODE, &set_fd_mode);
             if (result == -1) {
-                printf("ioctl().. Error, <errno:%d> cmd=%s\n",
-                       errno,
-                       "EP1_CF02A_IOCTL_SET_DATA_BITRATE");
+                printf("ioctl().. Error, <errno:%d> cmd=%s\n", errno, "EP1_CF02A_IOCTL_SET_FD_MODE");
                 close(fd);
                 return EXIT_FAILURE;
+            }
+        }
+
+        if (fd_mode) {
+            {
+                /*
+                * Setting up ISO mode
+                */
+                ep1_cf02a_ioctl_set_iso_mode_t iso_mode;
+                iso_mode.non_iso_mode = false;
+                result = ioctl(fd, EP1_CF02A_IOCTL_SET_ISO_MODE, &iso_mode);
+                if (result == -1) {
+                    printf("ioctl().. Error, <errno:%d> cmd=%s\n",
+                        errno,
+                        "EP1_CF02A_IOCTL_SET_ISO_MODE");
+                    close(fd);
+                    return EXIT_FAILURE;
+                }
+            }
+
+            {
+                /*
+                * Setting up CAN data bitrate
+                */
+                ep1_cf02a_ioctl_set_data_bitrate_t set_dbitrate;
+                set_dbitrate.bitrate = dbitrate;
+                set_dbitrate.sample_point = dsample_point;
+                result = ioctl(fd, EP1_CF02A_IOCTL_SET_DATA_BITRATE, &set_dbitrate);
+                if (result == -1) {
+                    printf("ioctl().. Error, <errno:%d> cmd=%s\n",
+                        errno,
+                        "EP1_CF02A_IOCTL_SET_DATA_BITRATE");
+                    close(fd);
+                    return EXIT_FAILURE;
+                }
             }
         }
 
@@ -298,7 +308,7 @@ main(int argc, char* argv[])
             timespec_add(&timestamp, sec, usec * 1000);
 
             /* Getting CAN frame from receiving data */
-            frame.can_id = array_to_uint(&buf[pos + 8]) & 0x1FFFFFFF;
+            frame.can_id = array_to_uint(&buf[pos + 8]);
             frame.len = can_dlc2len(buf[pos + 12] & 0x0F);
             frame.flags = buf[pos + 13];
             memcpy(frame.data, &buf[pos + 14], CANFD_MAX_DLEN);

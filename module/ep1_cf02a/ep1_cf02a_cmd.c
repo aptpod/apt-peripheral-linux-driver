@@ -4,8 +4,10 @@
  */
 
 #include <linux/slab.h>
+#include <linux/can/dev.h>
 
 #include "../apt_usbtrx_core.h" /* send_msg(), wait_msg() */
+#include "ep1_cf02a_def.h"
 #include "ep1_cf02a_cmd.h"
 #include "ep1_cf02a_msg.h"
 
@@ -61,9 +63,9 @@ static int ep1_cf02a_cmd_common(apt_usbtrx_dev_t *dev, void *req_message, void *
 		return RESULT_Failure;
 	}
 
-	result = apt_usbtrx_send_msg(dev, req_data, req_data_size);
+	result = apt_usbtrx_send_msg_sync(dev, req_data, req_data_size);
 	if (result != RESULT_Success) {
-		EMSG("apt_usbtrx_send_msg().. Error");
+		EMSG("apt_usbtrx_send_msg_sync().. Error");
 		kfree(req_data);
 		kfree(resp_data);
 		return RESULT_Failure;
@@ -210,15 +212,55 @@ int ep1_cf02a_set_iso_mode(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_iso_mode_t *
 				    ep1_cf02a_msg_pack_set_iso_mode, success, APT_USBTRX_RECV_TIMEOUT);
 }
 
+static int ep1_cf02a_check_bit_timing(const struct can_bittiming_const *btc,
+				      const ep1_cf02a_msg_set_bit_timing_t *timing)
+{
+	uint32_t timing_tseg1 = timing->prop_seg + timing->phase_seg1;
+	uint32_t timing_tseg2 = timing->phase_seg2;
+
+	if (timing_tseg1 < btc->tseg1_min || timing_tseg1 > btc->tseg1_max) {
+		EMSG("tseg1 is out of range");
+		return -ERANGE;
+	}
+
+	if (timing_tseg2 < btc->tseg2_min || timing_tseg2 > btc->tseg2_max) {
+		EMSG("tseg2 is out of range");
+		return -ERANGE;
+	}
+
+	if (timing->sjw > btc->sjw_max) {
+		EMSG("sjw is out of range");
+		return -ERANGE;
+	}
+
+	if (timing->brp < btc->brp_min || timing->brp > btc->brp_max) {
+		EMSG("brp is out of range");
+		return -ERANGE;
+	}
+
+	return 0;
+}
+
 /*!
  * @brief get bit timing
  */
 int ep1_cf02a_get_bit_timing(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_bit_timing_t *timing)
 {
-	return ep1_cf02a_get_common(dev, timing, EP1_CF02A_CMD_LENGTH_GET_BIT_TIMING,
-				    EP1_CF02A_CMD_LENGTH_RESPONSE_GET_BIT_TIMING, EP1_CF02A_CMD_GetBitTiming,
-				    EP1_CF02A_CMD_ResponseGetBitTiming, ep1_cf02a_msg_parse_response_get_bit_timing,
-				    APT_USBTRX_RECV_TIMEOUT);
+	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
+	int result;
+
+	result = ep1_cf02a_get_common(dev, timing, EP1_CF02A_CMD_LENGTH_GET_BIT_TIMING,
+				      EP1_CF02A_CMD_LENGTH_RESPONSE_GET_BIT_TIMING, EP1_CF02A_CMD_GetBitTiming,
+				      EP1_CF02A_CMD_ResponseGetBitTiming, ep1_cf02a_msg_parse_response_get_bit_timing,
+				      APT_USBTRX_RECV_TIMEOUT);
+	if (result != RESULT_Success) {
+		return result;
+	}
+
+	/* Update bit timing */
+	memcpy(unique_data->bittiming, timing, sizeof(ep1_cf02a_msg_bit_timing_t));
+
+	return result;
 }
 
 /*!
@@ -226,8 +268,28 @@ int ep1_cf02a_get_bit_timing(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_bit_timing
  */
 int ep1_cf02a_set_bit_timing(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_bit_timing_t *timing, bool *success)
 {
-	return ep1_cf02a_set_common(dev, timing, EP1_CF02A_CMD_LENGTH_SET_BIT_TIMING, EP1_CF02A_CMD_SetBitTiming,
-				    ep1_cf02a_msg_pack_set_bit_timing, success, APT_USBTRX_RECV_TIMEOUT);
+	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
+	int result;
+
+	/* Check bit timing */
+	result = ep1_cf02a_check_bit_timing(unique_data->bittiming_const, timing);
+	if (result != 0) {
+		EMSG("ep1_cf02a_check_bit_timing().. Error");
+		return RESULT_Failure;
+	}
+
+	result = ep1_cf02a_set_common(dev, timing, EP1_CF02A_CMD_LENGTH_SET_BIT_TIMING, EP1_CF02A_CMD_SetBitTiming,
+				      ep1_cf02a_msg_pack_set_bit_timing, success, APT_USBTRX_RECV_TIMEOUT);
+	if (result != RESULT_Success) {
+		return result;
+	}
+
+	if (*success) {
+		/* Update bit timing */
+		memcpy(unique_data->bittiming, timing, sizeof(ep1_cf02a_msg_bit_timing_t));
+	}
+
+	return result;
 }
 
 /*!
@@ -235,10 +297,21 @@ int ep1_cf02a_set_bit_timing(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_bit_timing
  */
 int ep1_cf02a_get_data_bit_timing(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_data_bit_timing_t *timing)
 {
-	return ep1_cf02a_get_common(dev, timing, EP1_CF02A_CMD_LENGTH_GET_DATA_BIT_TIMING,
-				    EP1_CF02A_CMD_LENGTH_RESPONSE_GET_DATA_BIT_TIMING, EP1_CF02A_CMD_GetDataBitTiming,
-				    EP1_CF02A_CMD_ResponseGetDataBitTiming,
-				    ep1_cf02a_msg_parse_response_get_data_bit_timing, APT_USBTRX_RECV_TIMEOUT);
+	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
+	int result;
+
+	result = ep1_cf02a_get_common(dev, timing, EP1_CF02A_CMD_LENGTH_GET_DATA_BIT_TIMING,
+				      EP1_CF02A_CMD_LENGTH_RESPONSE_GET_DATA_BIT_TIMING, EP1_CF02A_CMD_GetDataBitTiming,
+				      EP1_CF02A_CMD_ResponseGetDataBitTiming,
+				      ep1_cf02a_msg_parse_response_get_data_bit_timing, APT_USBTRX_RECV_TIMEOUT);
+	if (result != RESULT_Success) {
+		return result;
+	}
+
+	/* Update data bit timing */
+	memcpy(unique_data->data_bittiming, timing, sizeof(ep1_cf02a_msg_bit_timing_t));
+
+	return result;
 }
 
 /*!
@@ -246,9 +319,29 @@ int ep1_cf02a_get_data_bit_timing(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_data_
  */
 int ep1_cf02a_set_data_bit_timing(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_data_bit_timing_t *timing, bool *success)
 {
-	return ep1_cf02a_set_common(dev, timing, EP1_CF02A_CMD_LENGTH_SET_DATA_BIT_TIMING,
-				    EP1_CF02A_CMD_SetDataBitTiming, ep1_cf02a_msg_pack_set_data_bit_timing, success,
-				    APT_USBTRX_RECV_TIMEOUT);
+	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
+	int result;
+
+	/* Check data bit timing */
+	result = ep1_cf02a_check_bit_timing(unique_data->data_bittiming_const, timing);
+	if (result != 0) {
+		EMSG("ep1_cf02a_check_bit_timing().. Error");
+		return RESULT_Failure;
+	}
+
+	result = ep1_cf02a_set_common(dev, timing, EP1_CF02A_CMD_LENGTH_SET_DATA_BIT_TIMING,
+				      EP1_CF02A_CMD_SetDataBitTiming, ep1_cf02a_msg_pack_set_data_bit_timing, success,
+				      APT_USBTRX_RECV_TIMEOUT);
+	if (result != RESULT_Success) {
+		return result;
+	}
+
+	if (*success) {
+		/* Update data bit timing */
+		memcpy(unique_data->data_bittiming, timing, sizeof(ep1_cf02a_msg_bit_timing_t));
+	}
+
+	return result;
 }
 
 /*!
@@ -276,10 +369,21 @@ int ep1_cf02a_set_tx_rx_control(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_tx_rx_c
  */
 int ep1_cf02a_get_can_clock(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_can_clock_t *can_clock)
 {
-	return ep1_cf02a_get_common(dev, can_clock, EP1_CF02A_CMD_LENGTH_GET_CAN_CLOCK,
-				    EP1_CF02A_CMD_LENGTH_RESPONSE_GET_CAN_CLOCK, EP1_CF02A_CMD_GetCANClock,
-				    EP1_CF02A_CMD_ResponseGetCANClock, ep1_cf02a_msg_parse_response_get_can_clock,
-				    APT_USBTRX_RECV_TIMEOUT);
+	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
+	int result;
+
+	result = ep1_cf02a_get_common(dev, can_clock, EP1_CF02A_CMD_LENGTH_GET_CAN_CLOCK,
+				      EP1_CF02A_CMD_LENGTH_RESPONSE_GET_CAN_CLOCK, EP1_CF02A_CMD_GetCANClock,
+				      EP1_CF02A_CMD_ResponseGetCANClock, ep1_cf02a_msg_parse_response_get_can_clock,
+				      APT_USBTRX_RECV_TIMEOUT);
+	if (result != RESULT_Success) {
+		return result;
+	}
+
+	/* Update can clock */
+	unique_data->can_clock = can_clock->can_clock;
+
+	return result;
 }
 
 /*!
@@ -344,11 +448,14 @@ int ep1_cf02a_get_current_store_data_state(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_
  */
 int ep1_cf02a_get_store_data_id_list_count(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_store_data_id_list_count_t *count)
 {
+	/* Extend timeout because if the store data is large, it takes time to get the count */
+	unsigned int timeout_msec = APT_USBTRX_RECV_TIMEOUT * 10;
+
 	return ep1_cf02a_get_common(dev, count, EP1_CF02A_CMD_LENGTH_GET_STORE_DATA_ID_LIST_COUNT,
 				    EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_DATA_ID_LIST_COUNT,
 				    EP1_CF02A_CMD_GetStoreDataIDListCount,
 				    EP1_CF02A_CMD_ResponseGetStoreDataIDListCount,
-				    ep1_cf02a_msg_parse_response_get_store_data_id_list_count, APT_USBTRX_RECV_TIMEOUT);
+				    ep1_cf02a_msg_parse_response_get_store_data_id_list_count, timeout_msec);
 }
 
 /*!
@@ -380,16 +487,12 @@ int ep1_cf02a_get_store_data_meta(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_store
 /*!
  * @brief get store data rx control
  */
-int ep1_cf02a_get_store_data_rx_control(apt_usbtrx_dev_t *dev,
-					ep1_cf02a_msg_get_store_data_rx_control_request_t *control_req,
-					ep1_cf02a_msg_get_store_data_rx_control_response_t *control_res)
+int ep1_cf02a_get_store_data_rx_control(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_store_data_rx_control_t *control)
 {
-	return ep1_cf02a_cmd_common(dev, control_req, control_res, EP1_CF02A_CMD_LENGTH_GET_STORE_DATA_RX_CONTROL,
+	return ep1_cf02a_get_common(dev, control, EP1_CF02A_CMD_LENGTH_GET_STORE_DATA_RX_CONTROL,
 				    EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_DATA_RX_CONTROL,
 				    EP1_CF02A_CMD_GetStoreDataRxControl, EP1_CF02A_CMD_ResponseGetStoreDataRxControl,
-				    APT_USBTRX_CMD_Unknown, ep1_cf02a_msg_pack_get_store_data_rx_control,
-				    ep1_cf02a_msg_parse_response_get_store_data_rx_control, NULL,
-				    APT_USBTRX_RECV_TIMEOUT);
+				    ep1_cf02a_msg_parse_response_get_store_data_rx_control, APT_USBTRX_RECV_TIMEOUT);
 }
 
 /*!
@@ -422,6 +525,26 @@ int ep1_cf02a_init_store_data_media(apt_usbtrx_dev_t *dev, bool *success)
 
 	return ep1_cf02a_set_common(dev, NULL, EP1_CF02A_CMD_LENGTH_INIT_STORE_DATA_MEDIA,
 				    EP1_CF02A_CMD_InitStoreDataMedia, NULL, success, timeout_msec);
+}
+
+/*!
+ * @brief get store enable
+ */
+int ep1_cf02a_get_store_enable(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_store_enable_t *enable)
+{
+	return ep1_cf02a_get_common(dev, enable, EP1_CF02A_CMD_LENGTH_GET_STORE_ENABLE,
+				    EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_ENABLE, EP1_CF02A_CMD_GetStoreEnable,
+				    EP1_CF02A_CMD_ResponseGetStoreEnable, ep1_cf02a_msg_parse_response_get_store_enable,
+				    APT_USBTRX_RECV_TIMEOUT);
+}
+
+/*!
+ * @brief set store enable
+ */
+int ep1_cf02a_set_store_enable(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_store_enable_t *enable, bool *success)
+{
+	return ep1_cf02a_set_common(dev, enable, EP1_CF02A_CMD_LENGTH_SET_STORE_ENABLE, EP1_CF02A_CMD_SetStoreEnable,
+				    ep1_cf02a_msg_pack_set_store_enable, success, APT_USBTRX_RECV_TIMEOUT);
 }
 
 /*!

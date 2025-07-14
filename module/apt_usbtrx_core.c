@@ -393,23 +393,66 @@ int apt_usbtrx_setup_tx_urb(apt_usbtrx_dev_t *dev, u8 *data, int data_size)
 }
 
 /*!
- * @brief send message
+ * @brief send message internal
  */
-int apt_usbtrx_send_msg(apt_usbtrx_dev_t *dev, u8 *data, int data_size)
+static int apt_usbtrx_send_msg_internal(apt_usbtrx_dev_t *dev, u8 *data, int data_size)
 {
 	int send_size;
 	int result;
 
-	CHKMSG("ENTER");
 	DMSG("%s(): data size=%d, data=%02x, %02x, %02x, ...", __func__, data_size, data[0], data[1], data[2]);
 
-	dev->rx_complete.id = data[2];
-	init_completion(&dev->rx_complete.complete);
 	result = usb_bulk_msg(dev->udev, usb_sndbulkpipe(dev->udev, dev->bulk_out->bEndpointAddress), data, data_size,
 			      &send_size, APT_USBTRX_SEND_TIMEOUT);
 	if (result != 0) {
 		EMSG("usb_bulk_msg().. Error, <errno:%d> data size=%d>", result, data_size);
 		return RESULT_Failure;
+	}
+
+	return RESULT_Success;
+}
+
+/*!
+ * @brief send message sync
+ * NOTE: If you use this function, you must call apt_usbtrx_wait_msg() to wait for the response.
+ */
+int apt_usbtrx_send_msg_sync(apt_usbtrx_dev_t *dev, u8 *data, int data_size)
+{
+	int result;
+
+	CHKMSG("ENTER");
+
+	result = down_interruptible(&dev->send_msg_sem);
+	if (result) {
+		EMSG("down_interruptible().. Error, <errno:%d>", result);
+		return RESULT_Failure;
+	}
+
+	dev->rx_complete.id = data[2];
+	init_completion(&dev->rx_complete.complete);
+
+	result = apt_usbtrx_send_msg_internal(dev, data, data_size);
+	if (result != RESULT_Success) {
+		up(&dev->send_msg_sem);
+		return result;
+	}
+
+	CHKMSG("LEAVE");
+	return RESULT_Success;
+}
+
+/*!
+ * @brief send message async
+ */
+int apt_usbtrx_send_msg_async(apt_usbtrx_dev_t *dev, u8 *data, int data_size)
+{
+	int result;
+
+	CHKMSG("ENTER");
+
+	result = apt_usbtrx_send_msg_internal(dev, data, data_size);
+	if (result != RESULT_Success) {
+		return result;
 	}
 
 	CHKMSG("LEAVE");
@@ -418,6 +461,7 @@ int apt_usbtrx_send_msg(apt_usbtrx_dev_t *dev, u8 *data, int data_size)
 
 /*!
  * @brief wait for message with timeout
+ * NOTE: If you use this function, you must call apt_usbtrx_send_msg_sync() to send the request.
  */
 int apt_usbtrx_wait_msg_timeout(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8 *data, int data_size,
 				unsigned int timeout_msec)
@@ -434,6 +478,8 @@ int apt_usbtrx_wait_msg_timeout(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8
 	buf = kzalloc(RX_BUFFER_SIZE, GFP_KERNEL);
 	if (buf == NULL) {
 		EMSG("kzalloc().. Error, <size:%d>", RX_BUFFER_SIZE);
+		up(&dev->send_msg_sem);
+		CHKMSG("LEAVE");
 		return RESULT_Failure;
 	}
 
@@ -448,6 +494,8 @@ int apt_usbtrx_wait_msg_timeout(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8
 			if (result == 0) {
 				WMSG("wait_for_completion_timeout().. Error, <errno:%d>", result);
 				kfree(buf);
+				up(&dev->send_msg_sem);
+				CHKMSG("LEAVE");
 				return RESULT_Timeout;
 			}
 			recv_size = dev->rx_complete.buffer_size;
@@ -460,6 +508,8 @@ int apt_usbtrx_wait_msg_timeout(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8
 			if (result != 0) {
 				EMSG("usb_bulk_msg().. Error, <errno:%d> data size=%d>", result, data_size);
 				kfree(buf);
+				up(&dev->send_msg_sem);
+				CHKMSG("LEAVE");
 				return RESULT_Failure;
 			}
 			DMSG("usb_bulk_msg().. Success");
@@ -480,6 +530,7 @@ int apt_usbtrx_wait_msg_timeout(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8
 				DMSG("%s(): coming ack, <id:0x%02x> data size=%d", __func__, msg.id, msg.payload_size);
 				memcpy(data, buf, APT_USBTRX_PAYLOAD_LENGTH_TO_MSG(msg.payload_size));
 				kfree(buf);
+				up(&dev->send_msg_sem);
 				CHKMSG("LEAVE");
 				return RESULT_Success;
 			}
@@ -488,6 +539,7 @@ int apt_usbtrx_wait_msg_timeout(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8
 				DMSG("%s(): coming nack, <id:0x%02x> data size=%d", __func__, msg.id, msg.payload_size);
 				memcpy(data, buf, APT_USBTRX_PAYLOAD_LENGTH_TO_MSG(msg.payload_size));
 				kfree(buf);
+				up(&dev->send_msg_sem);
 				CHKMSG("LEAVE");
 				return RESULT_Success;
 			}
@@ -500,6 +552,9 @@ int apt_usbtrx_wait_msg_timeout(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8
 
 	EMSG("%s(): msg is not coming, <id:0x%02x, 0x%02x>", __func__, ack_id, nack_id);
 	kfree(buf);
+	up(&dev->send_msg_sem);
+
+	CHKMSG("LEAVE");
 	return RESULT_Failure;
 }
 

@@ -123,11 +123,6 @@ int ep1_cf02a_msg_pack_get_store_data_meta(void *msg, u8 *data, int data_size);
 int ep1_cf02a_msg_parse_response_get_store_data_meta(u8 *data, int data_size, void *msg);
 
 /*!
- * @brief pack (Get Store Data Rx Control)
- */
-int ep1_cf02a_msg_pack_get_store_data_rx_control(void *msg, u8 *data, int data_size);
-
-/*!
  * @brief parse (Response Get Store Data Rx Control)
  */
 int ep1_cf02a_msg_parse_response_get_store_data_rx_control(u8 *data, int data_size, void *msg);
@@ -141,6 +136,16 @@ int ep1_cf02a_msg_pack_set_store_data_rx_control(void *msg, u8 *data, int data_s
  * @brief pack (Delete Store Data)
  */
 int ep1_cf02a_msg_pack_delete_store_data(void *msg, u8 *data, int data_size);
+
+/*!
+ * @brief parse (Response Get Store enable)
+ */
+int ep1_cf02a_msg_parse_response_get_store_enable(u8 *data, int data_size, void *msg);
+
+/*!
+ * @brief pack (Set Store Enable)
+ */
+int ep1_cf02a_msg_pack_set_store_enable(void *msg, u8 *data, int data_size);
 
 /*!
  * @brief parse (Response Get Capabilities)

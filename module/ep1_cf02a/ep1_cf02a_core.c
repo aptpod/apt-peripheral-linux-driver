@@ -134,6 +134,9 @@ int ep1_cf02a_dispatch_msg(apt_usbtrx_dev_t *dev, u8 *data, apt_usbtrx_msg_t *ms
 	case EP1_CF02A_CMD_ResponseGetStoreDataRxControl:
 		ep1_cf02a_dispatch_msg_common_response(dev, data, msg, EP1_CF02A_CMD_GetStoreDataRxControl);
 		break;
+	case EP1_CF02A_CMD_ResponseGetStoreEnable:
+		ep1_cf02a_dispatch_msg_common_response(dev, data, msg, EP1_CF02A_CMD_GetStoreEnable);
+		break;
 	case EP1_CF02A_CMD_ResponseGetCapabilities:
 		ep1_cf02a_dispatch_msg_common_response(dev, data, msg, EP1_CF02A_CMD_GetCapabilities);
 		break;

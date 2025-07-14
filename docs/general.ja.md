@@ -333,6 +333,7 @@ EDGEPLANT USB Peripherals で共通の sysfs 項目は以下の通りです。
 | firmware_version  | R    | ファームウェアバージョン |
 | ch                | R    | チャンネル |
 | sync_pulse        | R    | デバイスの同期状態 |
+| model_name        | R    | 型名 |
 
 sysfs のデバイスパスは以下のコマンドで表示できます。
 

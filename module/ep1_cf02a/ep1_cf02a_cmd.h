@@ -17,7 +17,6 @@ int ep1_cf02a_get_silent_mode(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_silent_mo
  */
 int ep1_cf02a_set_silent_mode(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_silent_mode_t *mode, bool *success);
 
-
 /*!
  * @brief get fd mode
  */
@@ -76,13 +75,14 @@ int ep1_cf02a_get_can_clock(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_can_clock_t
 /*!
  * @brief get device timestamp reset time
  */
-int ep1_cf02a_get_device_timestamp_reset_time(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_device_timestamp_reset_time_t *time);
-
+int ep1_cf02a_get_device_timestamp_reset_time(apt_usbtrx_dev_t *dev,
+					      ep1_cf02a_msg_get_device_timestamp_reset_time_t *time);
 
 /*!
  * @brief set host timestamp reset time
  */
-int ep1_cf02a_set_host_timestamp_reset_time(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_host_timestamp_reset_time_t *time, bool *success);
+int ep1_cf02a_set_host_timestamp_reset_time(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_host_timestamp_reset_time_t *time,
+					    bool *success);
 
 /*!
  * @brief get rtc time
@@ -107,22 +107,25 @@ int ep1_cf02a_get_store_data_id_list_count(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_
 /*!
  * @brief get store data id
  */
-int ep1_cf02a_get_store_data_id(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_store_data_id_request_t *id_req, ep1_cf02a_msg_get_store_data_id_response_t *id_res);
+int ep1_cf02a_get_store_data_id(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_store_data_id_request_t *id_req,
+				ep1_cf02a_msg_get_store_data_id_response_t *id_res);
 
 /*!
  * @brief get store data meta
  */
-int ep1_cf02a_get_store_data_meta(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_store_data_meta_request_t *meta_req, ep1_cf02a_msg_get_store_data_meta_response_t *meta_res);
+int ep1_cf02a_get_store_data_meta(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_store_data_meta_request_t *meta_req,
+				  ep1_cf02a_msg_get_store_data_meta_response_t *meta_res);
 
 /*!
  * @brief get store data rx control
  */
-int ep1_cf02a_get_store_data_rx_control(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_store_data_rx_control_request_t *control_req, ep1_cf02a_msg_get_store_data_rx_control_response_t *control_res);
+int ep1_cf02a_get_store_data_rx_control(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_store_data_rx_control_t *control);
 
 /*!
  * @brief set store data rx control
  */
-int ep1_cf02a_set_store_data_rx_control(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_store_data_rx_control_t *control, bool *success);
+int ep1_cf02a_set_store_data_rx_control(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_store_data_rx_control_t *control,
+					bool *success);
 
 /*!
  * @brief delete store data
@@ -133,6 +136,16 @@ int ep1_cf02a_delete_store_data(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_delete_stor
  * @brief init store data media
  */
 int ep1_cf02a_init_store_data_media(apt_usbtrx_dev_t *dev, bool *success);
+
+/*!
+ * @brief get store enable
+ */
+int ep1_cf02a_get_store_enable(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_store_enable_t *enable);
+
+/*!
+ * @brief set store enable
+ */
+int ep1_cf02a_set_store_enable(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_store_enable_t *enable, bool *success);
 
 /*!
  * @brief get capabilities

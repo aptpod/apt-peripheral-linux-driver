@@ -17,7 +17,10 @@
  */
 #define AP_CT2A_PRODUCT_ID 0x0100
 #define AP_CT2A_DEVP_PRODUCT_ID 0x5740
+#define AP_CT2A_MODEL_NAME "AP-CT2A"
+
 #define EP1_CH02A_PRODUCT_ID 0x0105
+#define EP1_CH02A_MODEL_NAME "EP1-CH02A"
 
 /*!
  * @brief const value

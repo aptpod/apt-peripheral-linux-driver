@@ -7,7 +7,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/can.h>
+#include <signal.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,7 +29,17 @@ enum
     RESULT_Failure
 };
 
-static int store_data_read_interval = 1000;
+static volatile bool stop_requested = false;
+static const uint16_t store_data_read_interval = 2000;
+char store_data_read_buffer[4096];
+
+static void
+handle_signal(int signal)
+{
+    if (signal == SIGTERM || signal == SIGINT) {
+        stop_requested = true;
+    }
+}
 
 static int
 can_dlc2len(int dlc)
@@ -146,6 +158,9 @@ get_store_data_id_list(
     store_data_id_list->count = store_data_id_list_count.count;
     alloc_store_data_id_list(store_data_id_list);
 
+    printf("             store data count: %d\n", store_data_id_list->count);
+    printf("get store data id list...\n");
+
     result =
       ioctl(fd, EP1_CF02A_IOCTL_GET_STORE_DATA_ID_LIST, store_data_id_list);
     if (result != 0) {
@@ -218,6 +233,7 @@ int
 read_store_data(int fd, const char* id, unsigned long long can_frame_count)
 {
     int result;
+    bool error = false;
     bool start;
     long rsize = 0;
     ssize_t total_rsize = 0;
@@ -231,49 +247,47 @@ read_store_data(int fd, const char* id, unsigned long long can_frame_count)
         return RESULT_Failure;
     }
 
-    /* Start check */
-    {
-        ep1_cf02a_ioctl_get_store_data_rx_control_t store_data_rx_control = {
-            0
-        };
-
-        memcpy(
-          store_data_rx_control.id, id, EP1_CF02A_STORE_DATA_ID_MAX_LENGTH);
-        result = get_store_data_rx_control(fd, &store_data_rx_control);
-        if (result != RESULT_Success) {
-            return RESULT_Failure;
-        }
-        if (start != store_data_rx_control.start) {
-            printf("Start check failed. start=%d\n",
-                   store_data_rx_control.start);
-            return RESULT_Failure;
-        }
-    }
-
     /* Read store data */
-    ep1_cf02a_ioctl_read_store_data_t read_store_data;
-    read_store_data.count = 4096;
-    read_store_data.buffer = (char*)malloc(read_store_data.count);
-    if (read_store_data.buffer == NULL) {
-        printf("malloc().. Error, <errno:%d>\n", errno);
-        goto stop;
-    }
-
-    while (total_rsize < total_can_frame_size) {
+    while (total_rsize < total_can_frame_size && !stop_requested) {
         /* Read CAN data */
         unsigned int sec, usec;
         struct canfd_frame frame = { 0 };
 
-        rsize = ioctl(fd, EP1_CF02A_IOCTL_READ_STORE_DATA, &read_store_data);
-        total_rsize += rsize;
-
-        if (rsize < 0) {
+        ep1_cf02a_ioctl_read_store_data_t read_store_data;
+        read_store_data.buffer = store_data_read_buffer;
+        read_store_data.count = sizeof(store_data_read_buffer);
+        result = ioctl(fd, EP1_CF02A_IOCTL_READ_STORE_DATA, &read_store_data);
+        if (result < 0) {
             printf("ioctl().. Error, <errno:%d> cmd=%s\n",
                    errno,
                    "EP1_CF02A_IOCTL_READ_STORE_DATA");
-            free(read_store_data.buffer);
+            error = true;
+            goto stop;
+        }
+
+        rsize = read_store_data.count;
+        if (rsize == 0) {
+            printf("read timeout. no data received.\n");
+            /* Stop check */
+            {
+                ep1_cf02a_ioctl_get_store_data_rx_control_t
+                  store_data_rx_control = { 0 };
+                result = get_store_data_rx_control(fd, &store_data_rx_control);
+                if (!store_data_rx_control.start &&
+                    total_rsize != total_can_frame_size) {
+                    printf("read error (%ld / %ld frames). Possibly driver "
+                           "buffer full. Please increase store data receive "
+                           "interval or reduce processing load.\n",
+                           total_rsize,
+                           total_can_frame_size);
+                    error = true;
+                    goto stop;
+                }
+            }
             break;
         }
+
+        total_rsize += rsize;
 
         const int packet_num = rsize / EP1_CF02A_CAN_PACKET_SIZE;
         for (int num = 0, pos = 0; num < packet_num;
@@ -312,8 +326,6 @@ stop:
             0
         };
 
-        memcpy(
-          store_data_rx_control.id, id, EP1_CF02A_STORE_DATA_ID_MAX_LENGTH);
         result = get_store_data_rx_control(fd, &store_data_rx_control);
         if (result != RESULT_Success) {
             return RESULT_Failure;
@@ -325,7 +337,7 @@ stop:
         }
     }
 
-    return RESULT_Success;
+    return error ? RESULT_Failure : RESULT_Success;
 }
 
 int
@@ -375,6 +387,13 @@ main(int argc, char* argv[])
             return EXIT_SUCCESS;
         }
     }
+
+    struct sigaction sa;
+    sa.sa_handler = handle_signal;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGINT, &sa, NULL);
 
     fd = open(devname, O_RDONLY);
     if (fd == -1) {
@@ -448,8 +467,6 @@ main(int argc, char* argv[])
         return EXIT_SUCCESS;
     }
 
-    printf("             store data count: %d\n", store_data_id_list.count);
-
     for (unsigned int i = 0; i < store_data_id_list.count; i++) {
         ep1_cf02a_ioctl_get_store_data_meta_t store_data_meta = { 0 };
 
@@ -494,7 +511,7 @@ main(int argc, char* argv[])
         printf("              can_frame_count: %llu\n",
                store_data_meta.can_frame_count);
 
-        if (is_read_store_data) {
+        if (is_read_store_data && store_data_meta.can_frame_count > 0) {
             /* skip read store data if now storing */
             if (current_store_data_state.state ==
                   EP1_CF02A_STORE_DATA_STATE_STORING &&
@@ -517,6 +534,10 @@ main(int argc, char* argv[])
                        devname,
                        EP1_CF02A_STORE_DATA_ID_MAX_LENGTH,
                        store_data_id_list.id_list[i]);
+            }
+
+            if (stop_requested) {
+                break;
             }
         }
     }

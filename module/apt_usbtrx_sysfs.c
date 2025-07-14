@@ -11,6 +11,18 @@
 #include "apt_usbtrx_def.h"
 
 /*!
+ * @brief model_name
+ */
+static ssize_t apt_usbtrx_sysfs_model_name_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	apt_usbtrx_dev_t *usbtrx_dev = NULL;
+
+	usbtrx_dev = dev_get_drvdata(dev);
+	return sprintf(buf, "%s\n", usbtrx_dev->model_name);
+}
+static DEVICE_ATTR(model_name, S_IRUGO, apt_usbtrx_sysfs_model_name_show, NULL);
+
+/*!
  * @brief skip data
  */
 static ssize_t apt_usbtrx_sysfs_skipcnt_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -145,6 +157,11 @@ int apt_usbtrx_sysfs_init(struct device *dev)
 		return RESULT_Failure;
 	}
 
+	result = device_create_file(dev, &dev_attr_model_name);
+	if (result != 0) {
+		EMSG("device_create_file().. Error, <name:%s>", "model_name");
+	}
+
 	result = device_create_file(dev, &dev_attr_skipcnt);
 	if (result != 0) {
 		EMSG("device_create_file().. Error, <name:%s>", "skipcnt");
@@ -203,6 +220,7 @@ int apt_usbtrx_sysfs_term(struct device *dev)
 		return RESULT_Failure;
 	}
 
+	device_remove_file(dev, &dev_attr_model_name);
 	device_remove_file(dev, &dev_attr_skipcnt);
 	device_remove_file(dev, &dev_attr_timestamp_mode);
 	device_remove_file(dev, &dev_attr_basetime_clock_id);

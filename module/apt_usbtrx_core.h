@@ -20,14 +20,20 @@ int apt_usbtrx_setup_rx_urbs(apt_usbtrx_dev_t *dev);
 int apt_usbtrx_setup_tx_urb(apt_usbtrx_dev_t *dev, u8 *data, int data_size);
 
 /*!
- * @brief send message
+ * @brief send message sync
  */
-int apt_usbtrx_send_msg(apt_usbtrx_dev_t *dev, u8 *data, int data_size);
+int apt_usbtrx_send_msg_sync(apt_usbtrx_dev_t *dev, u8 *data, int data_size);
+
+/*!
+ * @brief send message async
+ */
+int apt_usbtrx_send_msg_async(apt_usbtrx_dev_t *dev, u8 *data, int data_size);
 
 /*!
  * @brief wait for message with timeout
  */
-int apt_usbtrx_wait_msg_timeout(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8 *data, int data_size, unsigned int timeout_msec);
+int apt_usbtrx_wait_msg_timeout(apt_usbtrx_dev_t *dev, u8 ack_id, u8 nack_id, u8 *data, int data_size,
+				unsigned int timeout_msec);
 
 /*!
  * @brief wait for message

@@ -65,9 +65,9 @@ int apt_usbtrx_get_device_id(apt_usbtrx_dev_t *dev, char *device_id, int device_
 		return RESULT_Failure;
 	}
 
-	result = apt_usbtrx_send_msg(dev, req_data, req_data_size);
+	result = apt_usbtrx_send_msg_sync(dev, req_data, req_data_size);
 	if (result != RESULT_Success) {
-		EMSG("apt_usbtrx_send_msg().. Error");
+		EMSG("apt_usbtrx_send_msg_sync().. Error");
 		kfree(req_data);
 		kfree(resp_data);
 		return RESULT_Failure;
@@ -146,9 +146,9 @@ int apt_usbtrx_get_fw_version(apt_usbtrx_dev_t *dev, int *major_version, int *mi
 		return RESULT_Failure;
 	}
 
-	result = apt_usbtrx_send_msg(dev, req_data, req_data_size);
+	result = apt_usbtrx_send_msg_sync(dev, req_data, req_data_size);
 	if (result != RESULT_Success) {
-		EMSG("apt_usbtrx_send_msg().. Error");
+		EMSG("apt_usbtrx_send_msg_sync().. Error");
 		kfree(req_data);
 		kfree(resp_data);
 		return RESULT_Failure;
@@ -227,9 +227,9 @@ int apt_usbtrx_get_fw_version_revision(apt_usbtrx_dev_t *dev, int *major_version
 		return RESULT_Failure;
 	}
 
-	result = apt_usbtrx_send_msg(dev, req_data, req_data_size);
+	result = apt_usbtrx_send_msg_sync(dev, req_data, req_data_size);
 	if (result != RESULT_Success) {
-		EMSG("apt_usbtrx_send_msg().. Error");
+		EMSG("apt_usbtrx_send_msg_sync().. Error");
 		kfree(req_data);
 		kfree(resp_data);
 		return RESULT_Failure;
@@ -310,9 +310,9 @@ int apt_usbtrx_enable_reset_ts(apt_usbtrx_dev_t *dev, bool *success)
 		return RESULT_Failure;
 	}
 
-	result = apt_usbtrx_send_msg(dev, req_data, req_data_size);
+	result = apt_usbtrx_send_msg_sync(dev, req_data, req_data_size);
 	if (result != RESULT_Success) {
-		EMSG("apt_usbtrx_send_msg().. Error");
+		EMSG("apt_usbtrx_send_msg_sync().. Error");
 		kfree(req_data);
 		kfree(resp_data);
 		return RESULT_Failure;
@@ -410,9 +410,9 @@ int apt_usbtrx_reset_ts(apt_usbtrx_dev_t *dev, bool *success)
 		return RESULT_Failure;
 	}
 
-	result = apt_usbtrx_send_msg(dev, req_data, req_data_size);
+	result = apt_usbtrx_send_msg_sync(dev, req_data, req_data_size);
 	if (result != RESULT_Success) {
-		EMSG("apt_usbtrx_send_msg().. Error");
+		EMSG("apt_usbtrx_send_msg_sync().. Error");
 		kfree(req_data);
 		kfree(resp_data);
 		return RESULT_Failure;
@@ -499,9 +499,9 @@ int apt_usbtrx_reset_device(apt_usbtrx_dev_t *dev, bool *success)
 		return RESULT_Failure;
 	}
 
-	result = apt_usbtrx_send_msg(dev, req_data, req_data_size);
+	result = apt_usbtrx_send_msg_async(dev, req_data, req_data_size);
 	if (result != RESULT_Success) {
-		EMSG("apt_usbtrx_send_msg().. Error");
+		EMSG("apt_usbtrx_send_msg_async().. Error");
 		kfree(req_data);
 		return RESULT_Failure;
 	}
@@ -610,9 +610,9 @@ int apt_usbtrx_get_serial_no(apt_usbtrx_dev_t *dev, char *serial_no, int serial_
 		return RESULT_Failure;
 	}
 
-	result = apt_usbtrx_send_msg(dev, req_data, req_data_size);
+	result = apt_usbtrx_send_msg_sync(dev, req_data, req_data_size);
 	if (result != RESULT_Success) {
-		EMSG("apt_usbtrx_send_msg().. Error");
+		EMSG("apt_usbtrx_send_msg_sync().. Error");
 		kfree(req_data);
 		kfree(resp_data);
 		return RESULT_Failure;
@@ -677,9 +677,9 @@ int apt_usbtrx_move_dfu(apt_usbtrx_dev_t *dev, bool *success)
 		return RESULT_Failure;
 	}
 
-	result = apt_usbtrx_send_msg(dev, req_data, req_data_size);
+	result = apt_usbtrx_send_msg_async(dev, req_data, req_data_size);
 	if (result != RESULT_Success) {
-		EMSG("apt_usbtrx_send_msg().. Error");
+		EMSG("apt_usbtrx_send_msg_async().. Error");
 		kfree(req_data);
 		return RESULT_Failure;
 	}

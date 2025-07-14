@@ -41,6 +41,8 @@ enum EP1_CF02A_CMD {
 	EP1_CF02A_CMD_InitStoreDataMedia = 0x4B,
 	EP1_CF02A_CMD_SetFDMode = 0x4C,
 	EP1_CF02A_CMD_GetFDMode = 0x4D,
+	EP1_CF02A_CMD_SetStoreEnable = 0x4E,
+	EP1_CF02A_CMD_GetStoreEnable = 0x4F,
 	EP1_CF02A_CMD_GetCapabilities = 0xE0,
 	/*** Notify ***/
 	EP1_CF02A_CMD_NotifyCANSummary = 0x2B, /* same as AP-CT2A/EP1-CH02A */
@@ -61,6 +63,7 @@ enum EP1_CF02A_CMD {
 	EP1_CF02A_CMD_ResponseGetStoreDataMeta = 0x76,
 	EP1_CF02A_CMD_ResponseGetStoreDataRxControl = 0x78,
 	EP1_CF02A_CMD_ResponseGetFDMode = 0x7D,
+	EP1_CF02A_CMD_ResponseGetStoreEnable = 0x7E,
 	EP1_CF02A_CMD_ResponseGetCapabilities = 0xF0,
 };
 
@@ -93,9 +96,11 @@ enum EP1_CF02A_CMD {
 #define EP1_CF02A_CMD_LENGTH_GET_STORE_DATA_ID (8)
 #define EP1_CF02A_CMD_LENGTH_GET_STORE_DATA_META (36)
 #define EP1_CF02A_CMD_LENGTH_SET_STORE_DATA_RX_CONTROL (39)
-#define EP1_CF02A_CMD_LENGTH_GET_STORE_DATA_RX_CONTROL (36)
+#define EP1_CF02A_CMD_LENGTH_GET_STORE_DATA_RX_CONTROL (4)
 #define EP1_CF02A_CMD_LENGTH_DELETE_STORE_DATA (36)
 #define EP1_CF02A_CMD_LENGTH_INIT_STORE_DATA_MEDIA (4)
+#define EP1_CF02A_CMD_LENGTH_SET_STORE_ENABLE (5)
+#define EP1_CF02A_CMD_LENGTH_GET_STORE_ENABLE (4)
 #define EP1_CF02A_CMD_LENGTH_GET_CAPABILITIES (4)
 /*** Notify ***/
 #define EP1_CF02A_CMD_LENGTH_NOTIFY_CAN_SUMMARY (78)
@@ -115,7 +120,8 @@ enum EP1_CF02A_CMD {
 #define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_DATA_ID_LIST_COUNT (8)
 #define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_DATA_ID (36)
 #define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_DATA_META (47)
-#define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_DATA_RX_CONTROL (7)
+#define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_DATA_RX_CONTROL (39)
+#define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_ENABLE (5)
 #define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_CAPABILITIES (5)
 
 #define EP1_CF02A_CMD_STORE_DATA_ID_MAX_LENGTH (32)
@@ -294,31 +300,16 @@ struct ep1_cf02a_msg_get_store_data_meta_response_s {
 typedef struct ep1_cf02a_msg_get_store_data_meta_response_s ep1_cf02a_msg_get_store_data_meta_response_t;
 
 /*!
- * @brief message structure - set store data rx control
+ * @brief message structure - store data rx control
  */
 struct ep1_cf02a_msg_set_store_data_rx_control_s {
 	char id[EP1_CF02A_CMD_STORE_DATA_ID_MAX_LENGTH];
 	u8 start;
 	u16 interval;
 };
+typedef struct ep1_cf02a_msg_set_store_data_rx_control_s ep1_cf02a_msg_store_data_rx_control_t;
+typedef struct ep1_cf02a_msg_set_store_data_rx_control_s ep1_cf02a_msg_get_store_data_rx_control_t;
 typedef struct ep1_cf02a_msg_set_store_data_rx_control_s ep1_cf02a_msg_set_store_data_rx_control_t;
-
-/*!
- * @brief message structure - get store data rx control request
- */
-struct ep1_cf02a_msg_get_store_data_rx_control_request_s {
-	char id[EP1_CF02A_CMD_STORE_DATA_ID_MAX_LENGTH];
-};
-typedef struct ep1_cf02a_msg_get_store_data_rx_control_request_s ep1_cf02a_msg_get_store_data_rx_control_request_t;
-
-/*!
- * @brief message structure - get store data rx control response
- */
-struct ep1_cf02a_msg_get_store_data_rx_control_response_s {
-	u8 start;
-	u16 interval;
-};
-typedef struct ep1_cf02a_msg_get_store_data_rx_control_response_s ep1_cf02a_msg_get_store_data_rx_control_response_t;
 
 /*!
  * @brief message structure - delete store data
@@ -327,6 +318,15 @@ struct ep1_cf02a_msg_delete_store_data_s {
 	char id[EP1_CF02A_CMD_STORE_DATA_ID_MAX_LENGTH];
 };
 typedef struct ep1_cf02a_msg_delete_store_data_s ep1_cf02a_msg_delete_store_data_t;
+
+/*!
+ * @brief message structure - store enable
+ */
+struct ep1_cf02a_msg_store_enable_s {
+	bool enable;
+};
+typedef struct ep1_cf02a_msg_store_enable_s ep1_cf02a_msg_get_store_enable_t;
+typedef struct ep1_cf02a_msg_store_enable_s ep1_cf02a_msg_set_store_enable_t;
 
 /*!
  * @brief message structure - get capabilities

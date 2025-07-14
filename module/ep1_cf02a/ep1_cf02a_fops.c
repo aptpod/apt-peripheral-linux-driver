@@ -8,6 +8,13 @@
 #include <linux/uaccess.h>
 #include <linux/can/netlink.h>
 
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+#include <linux/sched/signal.h>
+#else
+#include <linux/sched.h>
+#endif
+
 #include "../ap_ct2a/ap_ct2a_cmd.h" /* apt_usbtrx_reset_can_summary() */
 #include "ep1_cf02a_fops.h"
 #include "ep1_cf02a_cmd_def.h"
@@ -466,11 +473,10 @@ static int ep1_cf02a_can_calc_bittiming(u32 clock_freq, struct can_bittiming *bt
  * @brief calc bit timing
  */
 static int ep1_cf02a_calc_bit_timing(apt_usbtrx_dev_t *dev, int bitrate, int sample_point,
-				     ep1_cf02a_msg_bit_timing_t *timing)
+				     const struct can_bittiming_const *btc, ep1_cf02a_msg_bit_timing_t *timing)
 {
-	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
 	ep1_cf02a_msg_get_can_clock_t can_clock;
-	struct can_bittiming bt;
+	struct can_bittiming bt = { 0 };
 	int result;
 	int err;
 
@@ -483,7 +489,7 @@ static int ep1_cf02a_calc_bit_timing(apt_usbtrx_dev_t *dev, int bitrate, int sam
 	bt.bitrate = bitrate;
 	bt.sample_point = sample_point;
 
-	err = ep1_cf02a_can_calc_bittiming(can_clock.can_clock, &bt, unique_data->bittiming_const);
+	err = ep1_cf02a_can_calc_bittiming(can_clock.can_clock, &bt, btc);
 	if (err) {
 		EMSG("ep1_cf02a_can_calc_bittiming().. Error");
 		return RESULT_Failure;
@@ -538,6 +544,7 @@ static long ep1_cf02a_ioctl_get_bitrate(apt_usbtrx_dev_t *dev, unsigned long arg
  */
 static long ep1_cf02a_ioctl_set_bitrate(apt_usbtrx_dev_t *dev, unsigned long arg)
 {
+	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
 	ep1_cf02a_ioctl_set_bitrate_t param;
 	ep1_cf02a_msg_set_bit_timing_t timing;
 	int result;
@@ -549,7 +556,7 @@ static long ep1_cf02a_ioctl_set_bitrate(apt_usbtrx_dev_t *dev, unsigned long arg
 		return -EFAULT;
 	}
 
-	result = ep1_cf02a_calc_bit_timing(dev, param.bitrate, param.sample_point,
+	result = ep1_cf02a_calc_bit_timing(dev, param.bitrate, param.sample_point, unique_data->bittiming_const,
 					   (ep1_cf02a_msg_bit_timing_t *)&timing);
 	if (result != RESULT_Success) {
 		EMSG("ep1_cf02a_calc_bit_timing().. Error");
@@ -605,6 +612,7 @@ static long ep1_cf02a_ioctl_get_data_bitrate(apt_usbtrx_dev_t *dev, unsigned lon
  */
 static long ep1_cf02a_ioctl_set_data_bitrate(apt_usbtrx_dev_t *dev, unsigned long arg)
 {
+	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
 	ep1_cf02a_ioctl_set_data_bitrate_t param;
 	ep1_cf02a_msg_set_data_bit_timing_t timing;
 	int result;
@@ -616,7 +624,7 @@ static long ep1_cf02a_ioctl_set_data_bitrate(apt_usbtrx_dev_t *dev, unsigned lon
 		return -EFAULT;
 	}
 
-	result = ep1_cf02a_calc_bit_timing(dev, param.bitrate, param.sample_point,
+	result = ep1_cf02a_calc_bit_timing(dev, param.bitrate, param.sample_point, unique_data->data_bittiming_const,
 					   (ep1_cf02a_msg_bit_timing_t *)&timing);
 	if (result != RESULT_Success) {
 		EMSG("ep1_cf02a_calc_bit_timing().. Error");
@@ -981,8 +989,8 @@ static long ep1_cf02a_ioctl_get_rtc_time(apt_usbtrx_dev_t *dev, unsigned long ar
 #include <linux/module.h>
 #include <linux/kernel.h>
 
-#define SECS_PER_HOUR	(60 * 60)
-#define SECS_PER_DAY	(SECS_PER_HOUR * 24)
+#define SECS_PER_HOUR (60 * 60)
+#define SECS_PER_DAY (SECS_PER_HOUR * 24)
 
 /**
  * time64_to_tm - converts the calendar time to local broken-down time
@@ -1050,41 +1058,41 @@ void time64_to_tm(time64_t totalsecs, int offset, struct tm *result)
 	 * is slightly different from [1].
 	 */
 
-	udays	= ((u64) days) + 2305843009213814918ULL;
+	udays = ((u64)days) + 2305843009213814918ULL;
 
-	u64tmp		= 4 * udays + 3;
-	century		= div64_u64_rem(u64tmp, 146097, &u64tmp);
-	day_of_century	= (u32) (u64tmp / 4);
+	u64tmp = 4 * udays + 3;
+	century = div64_u64_rem(u64tmp, 146097, &u64tmp);
+	day_of_century = (u32)(u64tmp / 4);
 
-	u32tmp		= 4 * day_of_century + 3;
-	u64tmp		= 2939745ULL * u32tmp;
-	year_of_century	= upper_32_bits(u64tmp);
-	day_of_year	= lower_32_bits(u64tmp) / 2939745 / 4;
+	u32tmp = 4 * day_of_century + 3;
+	u64tmp = 2939745ULL * u32tmp;
+	year_of_century = upper_32_bits(u64tmp);
+	day_of_year = lower_32_bits(u64tmp) / 2939745 / 4;
 
-	year		= 100 * century + year_of_century;
-	is_leap_year	= year_of_century ? !(year_of_century % 4) : !(century % 4);
+	year = 100 * century + year_of_century;
+	is_leap_year = year_of_century ? !(year_of_century % 4) : !(century % 4);
 
-	u32tmp		= 2141 * day_of_year + 132377;
-	month		= u32tmp >> 16;
-	day		= ((u16) u32tmp) / 2141;
+	u32tmp = 2141 * day_of_year + 132377;
+	month = u32tmp >> 16;
+	day = ((u16)u32tmp) / 2141;
 
 	/*
 	 * Recall that January 1st is the 306-th day of the year in the
 	 * computational (not Gregorian) calendar.
 	 */
-	is_Jan_or_Feb	= day_of_year >= 306;
+	is_Jan_or_Feb = day_of_year >= 306;
 
 	/* Convert to the Gregorian calendar and adjust to Unix time. */
-	year		= year + is_Jan_or_Feb - 6313183731940000ULL;
-	month		= is_Jan_or_Feb ? month - 12 : month;
-	day		= day + 1;
-	day_of_year	+= is_Jan_or_Feb ? -306 : 31 + 28 + is_leap_year;
+	year = year + is_Jan_or_Feb - 6313183731940000ULL;
+	month = is_Jan_or_Feb ? month - 12 : month;
+	day = day + 1;
+	day_of_year += is_Jan_or_Feb ? -306 : 31 + 28 + is_leap_year;
 
 	/* Convert to tm's format. */
-	result->tm_year = (long) (year - 1900);
-	result->tm_mon  = (int) month;
-	result->tm_mday = (int) day;
-	result->tm_yday = (int) day_of_year;
+	result->tm_year = (long)(year - 1900);
+	result->tm_mon = (int)month;
+	result->tm_mday = (int)day;
+	result->tm_yday = (int)day_of_year;
 }
 #endif
 
@@ -1093,25 +1101,25 @@ void time64_to_tm(time64_t totalsecs, int offset, struct tm *result)
  */
 static void get_real_rtc_time(ep1_cf02a_msg_set_rtc_time_t *rtc_time)
 {
-    struct timespec64 ts;
-    struct tm tm;
+	struct timespec64 ts;
+	struct tm tm;
 
-    ktime_get_real_ts64(&ts);
-    time64_to_tm(ts.tv_sec, 0, &tm);
+	ktime_get_real_ts64(&ts);
+	time64_to_tm(ts.tv_sec, 0, &tm);
 
-    rtc_time->year = (u8)((tm.tm_year + 1900) - 2000);
-    rtc_time->month = (u8)(tm.tm_mon + 1);
-    rtc_time->date = (u8)(tm.tm_mday);
+	rtc_time->year = (u8)((tm.tm_year + 1900) - 2000);
+	rtc_time->month = (u8)(tm.tm_mon + 1);
+	rtc_time->date = (u8)(tm.tm_mday);
 
-    if (tm.tm_wday == 0)
-        rtc_time->weekday = (u8)7;
-    else
-        rtc_time->weekday = (u8)(tm.tm_wday);
+	if (tm.tm_wday == 0)
+		rtc_time->weekday = (u8)7;
+	else
+		rtc_time->weekday = (u8)(tm.tm_wday);
 
-    rtc_time->hour = (u8)(tm.tm_hour);
-    rtc_time->minute = (u8)(tm.tm_min);
-    rtc_time->second = (u8)(tm.tm_sec);
-    rtc_time->microsecond = (u32)(ts.tv_nsec / 1000);
+	rtc_time->hour = (u8)(tm.tm_hour);
+	rtc_time->minute = (u8)(tm.tm_min);
+	rtc_time->second = (u8)(tm.tm_sec);
+	rtc_time->microsecond = (u32)(ts.tv_nsec / 1000);
 }
 
 /*!
@@ -1216,6 +1224,11 @@ static long ep1_cf02a_ioctl_get_store_data_id_list(apt_usbtrx_dev_t *dev, unsign
 	}
 
 	for (i = 0; i < param.count; i++) {
+		if (signal_pending(current)) {
+			kfree(id_list.id_list);
+			return -ERESTARTSYS;
+		}
+
 		id_req.index = i;
 		result = ep1_cf02a_get_store_data_id(dev, &id_req, &id_res);
 		if (result != RESULT_Success) {
@@ -1299,8 +1312,7 @@ static long ep1_cf02a_ioctl_get_store_data_meta(apt_usbtrx_dev_t *dev, unsigned 
 static long ep1_cf02a_ioctl_get_store_data_rx_control(apt_usbtrx_dev_t *dev, unsigned long arg)
 {
 	ep1_cf02a_ioctl_get_store_data_rx_control_t param;
-	ep1_cf02a_msg_get_store_data_rx_control_request_t control_req;
-	ep1_cf02a_msg_get_store_data_rx_control_response_t control_res;
+	ep1_cf02a_msg_get_store_data_rx_control_t control;
 	int result;
 
 	result = copy_from_user(&param, (void __user *)arg, sizeof(ep1_cf02a_ioctl_get_store_data_rx_control_t));
@@ -1309,16 +1321,15 @@ static long ep1_cf02a_ioctl_get_store_data_rx_control(apt_usbtrx_dev_t *dev, uns
 		return -EFAULT;
 	}
 
-	memcpy(control_req.id, param.id, sizeof(control_req.id));
-
-	result = ep1_cf02a_get_store_data_rx_control(dev, &control_req, &control_res);
+	result = ep1_cf02a_get_store_data_rx_control(dev, &control);
 	if (result != RESULT_Success) {
 		EMSG("ep1_cf02a_get_store_data_rx_control().. Error");
 		return -EIO;
 	}
 
-	param.start = control_res.start;
-	param.interval = control_res.interval;
+	memcpy(param.id, control.id, sizeof(param.id));
+	param.start = control.start;
+	param.interval = control.interval;
 
 	result = copy_to_user((void __user *)arg, &param, sizeof(ep1_cf02a_ioctl_get_store_data_rx_control_t));
 	if (result != 0) {
@@ -1400,12 +1411,27 @@ static long ep1_cf02a_ioctl_read_store_data(apt_usbtrx_dev_t *dev, unsigned long
 	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
 
 	ep1_cf02a_ioctl_read_store_data_t param;
+	size_t buffer_size;
 	int result;
 	ssize_t rsize;
 	bool onopening;
 	bool onclosing;
 
 	result = copy_from_user(&param, (void __user *)arg, sizeof(ep1_cf02a_ioctl_read_store_data_t));
+	if (result != 0) {
+		EMSG("copy_from_user().. Error");
+		return -EFAULT;
+	}
+
+	buffer_size = param.count;
+
+	/* Initialize read count */
+	param.count = (size_t)0;
+	result = copy_to_user((void __user *)arg, &param, sizeof(ep1_cf02a_ioctl_read_store_data_t));
+	if (result != 0) {
+		EMSG("copy_to_user().. Error");
+		return -EFAULT;
+	}
 
 	onopening = atomic_read(&dev->onopening);
 	if (onopening == true) {
@@ -1420,11 +1446,12 @@ static long ep1_cf02a_ioctl_read_store_data(apt_usbtrx_dev_t *dev, unsigned long
 		return -ESHUTDOWN;
 	}
 
-	result = wait_event_interruptible(unique_data->rx_store_data.wq,
-					  ep1_cf02a_rx_store_data_is_read_enable(dev) == true);
-	if (result != 0) {
+	result = wait_event_interruptible_timeout(unique_data->rx_store_data.wq,
+						  (ep1_cf02a_rx_store_data_is_read_enable(dev) == true),
+						  msecs_to_jiffies(1000));
+	if (result <= 0) {
 		if (result != -ERESTARTSYS) {
-			EMSG("wait_event_interruptible().. Error, <errno:%d>", result);
+			EMSG("wait_event_interruptible_timeout().. Error, <errno:%d>", result);
 		}
 		return result;
 	}
@@ -1437,7 +1464,7 @@ static long ep1_cf02a_ioctl_read_store_data(apt_usbtrx_dev_t *dev, unsigned long
 	}
 
 	/* copy to user memory space */
-	rsize = apt_usbtrx_ringbuffer_read(&unique_data->rx_store_data, param.buffer, param.count);
+	rsize = apt_usbtrx_ringbuffer_read(&unique_data->rx_store_data, param.buffer, buffer_size);
 	if (rsize < 0) {
 		EMSG("apt_usbtrx_ringbuffer_read().. Error");
 		return -EIO;
@@ -1445,6 +1472,14 @@ static long ep1_cf02a_ioctl_read_store_data(apt_usbtrx_dev_t *dev, unsigned long
 
 	if (onclosing == true) {
 		complete(&unique_data->rx_store_data_done);
+	}
+
+	/* update read count */
+	param.count = (size_t)rsize;
+	result = copy_to_user((void __user *)arg, &param, sizeof(ep1_cf02a_ioctl_read_store_data_t));
+	if (result != 0) {
+		EMSG("copy_to_user().. Error");
+		return -EFAULT;
 	}
 
 	return rsize;
@@ -1496,6 +1531,63 @@ static long ep1_cf02a_ioctl_init_store_data_media(apt_usbtrx_dev_t *dev, unsigne
 	}
 	if (success != true) {
 		EMSG("ep1_cf02a_init_store_data_media().. Error, Exec failed");
+		return -EIO;
+	}
+
+	return 0;
+}
+
+/*!
+ * @brief ioctl - get store enable
+ */
+static long ep1_cf02a_ioctl_get_store_enable(apt_usbtrx_dev_t *dev, unsigned long arg)
+{
+	ep1_cf02a_ioctl_get_store_enable_t param;
+	ep1_cf02a_msg_get_store_enable_t enable;
+	int result;
+
+	result = ep1_cf02a_get_store_enable(dev, &enable);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_get_store_enable().. Error");
+		return -EIO;
+	}
+
+	param.enable = enable.enable;
+
+	result = copy_to_user((void __user *)arg, &param, sizeof(ep1_cf02a_ioctl_get_store_enable_t));
+	if (result != 0) {
+		EMSG("copy_to_user().. Error");
+		return -EFAULT;
+	}
+
+	return 0;
+}
+
+/*!
+ * @brief ioctl - set store enable
+ */
+static long ep1_cf02a_ioctl_set_store_enable(apt_usbtrx_dev_t *dev, unsigned long arg)
+{
+	ep1_cf02a_ioctl_set_store_enable_t param;
+	ep1_cf02a_msg_set_store_enable_t enable;
+	int result;
+	bool success;
+
+	result = copy_from_user(&param, (void __user *)arg, sizeof(ep1_cf02a_ioctl_set_store_enable_t));
+	if (result != 0) {
+		EMSG("copy_from_user().. Error");
+		return -EFAULT;
+	}
+
+	enable.enable = param.enable;
+
+	result = ep1_cf02a_set_store_enable(dev, &enable, &success);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_set_store_enable().. Error");
+		return -EIO;
+	}
+	if (success != true) {
+		EMSG("ep1_cf02a_set_store_enable().. Error, Exec failed");
 		return -EIO;
 	}
 
@@ -1570,6 +1662,10 @@ long ep1_cf02a_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return ep1_cf02a_ioctl_delete_store_data(dev, arg);
 	case EP1_CF02A_IOCTL_INIT_STORE_DATA_MEDIA:
 		return ep1_cf02a_ioctl_init_store_data_media(dev, arg);
+	case EP1_CF02A_IOCTL_GET_STORE_ENABLE:
+		return ep1_cf02a_ioctl_get_store_enable(dev, arg);
+	case EP1_CF02A_IOCTL_SET_STORE_ENABLE:
+		return ep1_cf02a_ioctl_set_store_enable(dev, arg);
 	default:
 		EMSG("not supported, <ioctl:0x%02x>", cmd);
 		return -EFAULT;

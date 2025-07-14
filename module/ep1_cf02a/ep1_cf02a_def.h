@@ -6,16 +6,18 @@
 #define __EP1_CF02A_DEF_H__
 
 #include <linux/types.h>
+#include "ep1_cf02a_cmd_def.h"
 
 /*!
  * @brief product id
  */
 #define EP1_CF02A_PRODUCT_ID 0x0101
+#define EP1_CF02A_MODEL_NAME "EP1-CF02A"
 
 /*!
  * @brief const value
  */
-#define EP1_CF02A_FW_DATA_SIZE (384 * 1024)
+#define EP1_CF02A_FW_DATA_SIZE (256 * 1024)
 #define EP1_CF02A_RXDATA_BUFFER_SIZE (8 * 4 * 1024)
 #define EP1_CF02A_STORE_DATA_BUFFER_SIZE (8 * 4 * 1024)
 
@@ -49,12 +51,16 @@ typedef struct ep1_cf02a_can_summary_s ep1_cf02a_can_summary_t;
  * @brief device unique data
  */
 struct ep1_cf02a_unique_data_s {
+	u32 can_clock;
 	const struct can_bittiming_const *bittiming_const;
 	const struct can_bittiming_const *data_bittiming_const;
+	ep1_cf02a_msg_bit_timing_t *bittiming;
+	ep1_cf02a_msg_bit_timing_t *data_bittiming;
 	ep1_cf02a_can_summary_t summary;
 	apt_usbtrx_ringbuffer_t rx_store_data;
 	size_t rx_store_data_size;
 	struct completion rx_store_data_done;
+	bool is_store_data_enabled;
 };
 typedef struct ep1_cf02a_unique_data_s ep1_cf02a_unique_data_t;
 

@@ -61,6 +61,7 @@ enum RESULT { RESULT_Failure = -1, RESULT_Success = 0, RESULT_NotEnough = 1, RES
 #define APT_USBTRX_TX_TOKEN_CAN_SIZE (16)
 #define APT_USBTRX_DEVICE_ID_LENGTH (4)
 #define APT_USBTRX_SERIAL_NO_LENGTH (14)
+#define APT_USBTRX_MODEL_NAME_LENGTH (32)
 #define APT_USBTRX_TX_TRANSFER_LIMIT_RATE (80)
 
 /*!
@@ -183,6 +184,7 @@ struct apt_usbtrx_dev_s {
 	atomic_t onclosing; /*!< */
 	struct timespec64 *resettime; /*!< */
 	int fw_count; /*!< */
+	struct semaphore send_msg_sem; /*!< */
 	struct semaphore tx_usb_transfer_sem; /*!< */
 	apt_usbtrx_ringbuffer_t tx_data; /*!< */
 	unsigned long tx_transfer_expired; /*!< */
@@ -191,6 +193,7 @@ struct apt_usbtrx_dev_s {
 	struct task_struct *tx_thread; /*!< */
 	int ch; /*!< */
 	char serial_no[APT_USBTRX_SERIAL_NO_LENGTH + 1]; /*!< */
+	char model_name[APT_USBTRX_MODEL_NAME_LENGTH + 1]; /*!< */
 	enum APT_USBTRX_SYNC_PULSE sync_pulse; /*!< */
 	apt_usbtrx_firmware_version_t fw_ver; /*!< */
 	atomic_t tx_buffer_rate; /*!< */

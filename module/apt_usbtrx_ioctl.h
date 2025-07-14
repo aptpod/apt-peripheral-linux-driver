@@ -550,9 +550,9 @@ typedef struct ep1_cf02a_ioctl_get_store_data_meta_s ep1_cf02a_ioctl_get_store_d
 
 /**
  * struct ep1_cf02a_ioctl_store_data_rx_control_s - Store data RX control definition.
- * @id: [IN] Store data id to control.
+ * @id: [IN(Set)/OUT(Get)] Store data id to control.
  * @start: [IN(Set)/OUT(Get)] Start or stop sending store data.
- * @interval: [IN(Set)/OUT(Get)] Sending interval in ms.
+ * @interval: [IN(Set)/OUT(Get)] Sending interval in us.
  */
 struct ep1_cf02a_ioctl_store_data_rx_control_s {
 	char id[EP1_CF02A_STORE_DATA_ID_MAX_LENGTH];
@@ -565,7 +565,9 @@ typedef struct ep1_cf02a_ioctl_store_data_rx_control_s ep1_cf02a_ioctl_set_store
 /**
  * struct ep1_cf02a_ioctl_read_store_data_s - Read store data definition.
  * @buffer: [OUT] Buffer to store data. User must allocate memory for this buffer.
- * @count: [IN] Buffer size.
+ * @count: [IN/OUT] Bidirectional parameter
+ *         - Input (before ioctl call): Size of the buffer allocated by the user (in bytes)
+ *         - Output (after ioctl call): Actual size of data read (in bytes)
  */
 struct ep1_cf02a_ioctl_read_store_data_s {
 	char __user *buffer;
@@ -581,6 +583,16 @@ struct ep1_cf02a_ioctl_delete_store_data_s {
 	char id[EP1_CF02A_STORE_DATA_ID_MAX_LENGTH];
 };
 typedef struct ep1_cf02a_ioctl_delete_store_data_s ep1_cf02a_ioctl_delete_store_data_t;
+
+/**
+ * struct ep1_cf02a_ioctl_store_enable_s - Store data enable definition.
+ * @enable: Enable or disable store data.
+ */
+struct ep1_cf02a_ioctl_store_enable_s {
+	bool enable;
+};
+typedef struct ep1_cf02a_ioctl_store_enable_s ep1_cf02a_ioctl_get_store_enable_t;
+typedef struct ep1_cf02a_ioctl_store_enable_s ep1_cf02a_ioctl_set_store_enable_t;
 
 /* ----------------------------------------------------------- */
 /* ------------------------ EP1-AG08A ------------------------ */
@@ -798,10 +810,11 @@ typedef ep1_ag08a_ioctl_analog_output_t pa_agu081_ioctl_analog_output_t;
 	_IOR(APT_USBTRX_IOC_TYPE, 0x43, ep1_cf02a_ioctl_get_current_store_data_state_t)
 #define EP1_CF02A_IOCTL_GET_STORE_DATA_ID_LIST_COUNT                                                                   \
 	_IOR(APT_USBTRX_IOC_TYPE, 0x44, ep1_cf02a_ioctl_get_store_data_id_list_count_t)
-#define EP1_CF02A_IOCTL_GET_STORE_DATA_ID_LIST _IOWR(APT_USBTRX_IOC_TYPE, 0x45, ep1_cf02a_ioctl_get_store_data_id_list_t)
+#define EP1_CF02A_IOCTL_GET_STORE_DATA_ID_LIST                                                                         \
+	_IOWR(APT_USBTRX_IOC_TYPE, 0x45, ep1_cf02a_ioctl_get_store_data_id_list_t)
 #define EP1_CF02A_IOCTL_GET_STORE_DATA_META _IOWR(APT_USBTRX_IOC_TYPE, 0x46, ep1_cf02a_ioctl_get_store_data_meta_t)
 #define EP1_CF02A_IOCTL_GET_STORE_DATA_RX_CONTROL                                                                      \
-	_IOWR(APT_USBTRX_IOC_TYPE, 0x47, ep1_cf02a_ioctl_get_store_data_rx_control_t)
+	_IOR(APT_USBTRX_IOC_TYPE, 0x47, ep1_cf02a_ioctl_get_store_data_rx_control_t)
 #define EP1_CF02A_IOCTL_SET_STORE_DATA_RX_CONTROL                                                                      \
 	_IOW(APT_USBTRX_IOC_TYPE, 0x48, ep1_cf02a_ioctl_set_store_data_rx_control_t)
 #define EP1_CF02A_IOCTL_READ_STORE_DATA _IOWR(APT_USBTRX_IOC_TYPE, 0x49, ep1_cf02a_ioctl_read_store_data_t)
@@ -809,5 +822,7 @@ typedef ep1_ag08a_ioctl_analog_output_t pa_agu081_ioctl_analog_output_t;
 #define EP1_CF02A_IOCTL_INIT_STORE_DATA_MEDIA _IO(APT_USBTRX_IOC_TYPE, 0x4b)
 #define EP1_CF02A_IOCTL_GET_FD_MODE _IOR(APT_USBTRX_IOC_TYPE, 0x4c, ep1_cf02a_ioctl_get_fd_mode_t)
 #define EP1_CF02A_IOCTL_SET_FD_MODE _IOW(APT_USBTRX_IOC_TYPE, 0x4d, ep1_cf02a_ioctl_set_fd_mode_t)
+#define EP1_CF02A_IOCTL_GET_STORE_ENABLE _IOR(APT_USBTRX_IOC_TYPE, 0x4e, ep1_cf02a_ioctl_get_store_enable_t)
+#define EP1_CF02A_IOCTL_SET_STORE_ENABLE _IOW(APT_USBTRX_IOC_TYPE, 0x4f, ep1_cf02a_ioctl_set_store_enable_t)
 
 #endif /* __APT_USBTRX_FOPS_DEF_H__ */

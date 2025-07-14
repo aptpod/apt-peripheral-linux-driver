@@ -48,8 +48,13 @@ done
 
 # Set host timestamp reset time for EP1-CF02A
 for device in $devices; do
-	model=$(udevadm info --query=property --name=$device | grep '^ID_MODEL=' | cut -d'=' -f2)
+	model="$(cat /sys/$(udevadm info --query=path --name=$device)/device/model_name 2>/dev/null)"
 	if [ "$model" != "EP1-CF02A" ]; then
+		continue
+	fi
+
+	store_data_enabled="$(cat /sys/$(udevadm info --query=path --name=$device)/device/store_data_enabled 2>/dev/null)"
+	if [ "$store_data_enabled" != "1" ]; then
 		continue
 	fi
 

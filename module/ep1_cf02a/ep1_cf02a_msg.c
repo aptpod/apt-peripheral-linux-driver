@@ -200,7 +200,8 @@ int ep1_cf02a_msg_parse_response_get_can_clock(u8 *data, int data_size, void *ms
  */
 int ep1_cf02a_msg_parse_response_get_device_timestamp_reset_time(u8 *data, int data_size, void *msg)
 {
-	ep1_cf02a_msg_get_device_timestamp_reset_time_t *reset_time = (ep1_cf02a_msg_get_device_timestamp_reset_time_t *)msg;
+	ep1_cf02a_msg_get_device_timestamp_reset_time_t *reset_time =
+		(ep1_cf02a_msg_get_device_timestamp_reset_time_t *)msg;
 	int n = 0;
 
 	reset_time->ts.ts_sec = data[n];
@@ -223,7 +224,8 @@ int ep1_cf02a_msg_parse_response_get_device_timestamp_reset_time(u8 *data, int d
  */
 int ep1_cf02a_msg_pack_set_host_timestamp_reset_time(void *msg, u8 *data, int data_size)
 {
-	ep1_cf02a_msg_set_host_timestamp_reset_time_t *reset_time = (ep1_cf02a_msg_set_host_timestamp_reset_time_t *)msg;
+	ep1_cf02a_msg_set_host_timestamp_reset_time_t *reset_time =
+		(ep1_cf02a_msg_set_host_timestamp_reset_time_t *)msg;
 	int n = 0;
 
 	data[n] = reset_time->ts.tv_sec;
@@ -435,30 +437,21 @@ int ep1_cf02a_msg_parse_response_get_store_data_meta(u8 *data, int data_size, vo
 }
 
 /*!
- * @brief pack (Get Store Data Rx Control)
- */
-int ep1_cf02a_msg_pack_get_store_data_rx_control(void *msg, u8 *data, int data_size)
-{
-	ep1_cf02a_msg_get_store_data_rx_control_request_t *control_req = (ep1_cf02a_msg_get_store_data_rx_control_request_t *)msg;
-
-	memcpy(data, control_req->id, EP1_CF02A_CMD_STORE_DATA_ID_MAX_LENGTH);
-
-	return RESULT_Success;
-}
-
-/*!
  * @brief parse (Response Get Store Data Rx Control)
  */
 int ep1_cf02a_msg_parse_response_get_store_data_rx_control(u8 *data, int data_size, void *msg)
 {
-	ep1_cf02a_msg_get_store_data_rx_control_response_t *control_res = (ep1_cf02a_msg_get_store_data_rx_control_response_t *)msg;
+	ep1_cf02a_msg_get_store_data_rx_control_t *control = (ep1_cf02a_msg_get_store_data_rx_control_t *)msg;
 	int n = 0;
 
-	control_res->start = data[n] == 0x01 ? true : false;
+	memcpy(control->id, data, EP1_CF02A_CMD_STORE_DATA_ID_MAX_LENGTH);
+	n = n + EP1_CF02A_CMD_STORE_DATA_ID_MAX_LENGTH;
+
+	control->start = data[n] == 0x01 ? true : false;
 	n = n + 1;
 
-	control_res->interval = data[n];
-	control_res->interval |= data[n + 1] << 8;
+	control->interval = data[n];
+	control->interval |= data[n + 1] << 8;
 	n = n + 2;
 
 	return RESULT_Success;
@@ -498,6 +491,30 @@ int ep1_cf02a_msg_pack_delete_store_data(void *msg, u8 *data, int data_size)
 }
 
 /*!
+ * @brief parse (Response Get Store Enable)
+ */
+int ep1_cf02a_msg_parse_response_get_store_enable(u8 *data, int data_size, void *msg)
+{
+	ep1_cf02a_msg_get_store_enable_t *store_enable = (ep1_cf02a_msg_get_store_enable_t *)msg;
+
+	store_enable->enable = data[0] == 0x01 ? true : false;
+
+	return RESULT_Success;
+}
+
+/*!
+ * @brief pack (Set Store Enable)
+ */
+int ep1_cf02a_msg_pack_set_store_enable(void *msg, u8 *data, int data_size)
+{
+	ep1_cf02a_msg_set_store_enable_t *store_enable = (ep1_cf02a_msg_set_store_enable_t *)msg;
+
+	data[0] = store_enable->enable == true ? 0x01 : 0x00;
+
+	return RESULT_Success;
+}
+
+/*!
  * @brief parse (Response Get Capabilities)
  */
 int ep1_cf02a_msg_parse_response_get_capabilities(u8 *data, int data_size, void *msg)
@@ -509,17 +526,15 @@ int ep1_cf02a_msg_parse_response_get_capabilities(u8 *data, int data_size, void 
 	return RESULT_Success;
 }
 
-static u8 can_dlc2len(u8 dlc) {
-    static const u8 dlc_to_len[] = {
-        0, 1, 2, 3, 4, 5, 6, 7, 8,
-        12, 16, 20, 24, 32, 48, 64
-    };
-    if (dlc >= 0 && dlc <= 15) {
-        return dlc_to_len[dlc];
-    } else {
+static u8 can_dlc2len(u8 dlc)
+{
+	static const u8 dlc_to_len[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64 };
+	if (dlc >= 0 && dlc <= 15) {
+		return dlc_to_len[dlc];
+	} else {
 		EMSG("can_dlc2len().. Error, <dlc:%d>", dlc);
-        return 0;
-    }
+		return 0;
+	}
 }
 
 /*!

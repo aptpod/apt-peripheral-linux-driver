@@ -51,9 +51,9 @@ int ep1_ch02a_get_status(apt_usbtrx_dev_t *dev, ep1_ch02a_msg_resp_get_status_t 
 		return RESULT_Failure;
 	}
 
-	result = apt_usbtrx_send_msg(dev, req_data, req_data_size);
+	result = apt_usbtrx_send_msg_sync(dev, req_data, req_data_size);
 	if (result != RESULT_Success) {
-		EMSG("apt_usbtrx_send_msg().. Error");
+		EMSG("apt_usbtrx_send_msg_sync().. Error");
 		kfree(req_data);
 		kfree(resp_data);
 		return RESULT_Failure;
@@ -154,9 +154,9 @@ int ep1_ch02a_set_bit_timing(apt_usbtrx_dev_t *dev, ep1_ch02a_msg_set_bit_timing
 		return RESULT_Failure;
 	}
 
-	result = apt_usbtrx_send_msg(dev, req_data, req_data_size);
+	result = apt_usbtrx_send_msg_sync(dev, req_data, req_data_size);
 	if (result != RESULT_Success) {
-		EMSG("apt_usbtrx_send_msg().. Error");
+		EMSG("apt_usbtrx_send_msg_sync().. Error");
 		kfree(req_data);
 		kfree(resp_data);
 		return RESULT_Failure;
@@ -244,9 +244,9 @@ int ep1_ch02a_get_bit_timing(apt_usbtrx_dev_t *dev, ep1_ch02a_msg_resp_get_bit_t
 		return RESULT_Failure;
 	}
 
-	result = apt_usbtrx_send_msg(dev, req_data, req_data_size);
+	result = apt_usbtrx_send_msg_sync(dev, req_data, req_data_size);
 	if (result != RESULT_Success) {
-		EMSG("apt_usbtrx_send_msg().. Error");
+		EMSG("apt_usbtrx_send_msg_sync().. Error");
 		kfree(req_data);
 		kfree(resp_data);
 		return RESULT_Failure;
