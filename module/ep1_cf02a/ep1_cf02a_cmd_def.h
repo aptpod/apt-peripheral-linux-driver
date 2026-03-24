@@ -37,17 +37,22 @@ enum EP1_CF02A_CMD {
 	EP1_CF02A_CMD_GetStoreDataMeta = 0x46,
 	EP1_CF02A_CMD_SetStoreDataRxControl = 0x47,
 	EP1_CF02A_CMD_GetStoreDataRxControl = 0x48,
+	EP1_CF02A_CMD_RequestNotifyRecvCANFrame = 0x80,
 	EP1_CF02A_CMD_DeleteStoreData = 0x4A,
 	EP1_CF02A_CMD_InitStoreDataMedia = 0x4B,
 	EP1_CF02A_CMD_SetFDMode = 0x4C,
 	EP1_CF02A_CMD_GetFDMode = 0x4D,
 	EP1_CF02A_CMD_SetStoreEnable = 0x4E,
 	EP1_CF02A_CMD_GetStoreEnable = 0x4F,
+	EP1_CF02A_CMD_GetCanStatistics = 0x82,
+	EP1_CF02A_CMD_ResetCanStatistics = 0x83,
+	EP1_CF02A_CMD_SetStoreMaxDuration = 0x84,
+	EP1_CF02A_CMD_GetStoreMaxDuration = 0x85,
 	EP1_CF02A_CMD_GetCapabilities = 0xE0,
 	/*** Notify ***/
-	EP1_CF02A_CMD_NotifyCANSummary = 0x2B, /* same as AP-CT2A/EP1-CH02A */
 	EP1_CF02A_CMD_NotifyRecvCANFrame = 0x3B,
 	EP1_CF02A_CMD_NotifyStoreDataRecvCanFrame = 0x49,
+	EP1_CF02A_CMD_NotifyStoreDataRecvCanFrameComplete = 0x81,
 	/*** Response ***/
 	EP1_CF02A_CMD_ResponseGetSilentMode = 0x61,
 	EP1_CF02A_CMD_ResponseGetISOMode = 0x63,
@@ -64,6 +69,8 @@ enum EP1_CF02A_CMD {
 	EP1_CF02A_CMD_ResponseGetStoreDataRxControl = 0x78,
 	EP1_CF02A_CMD_ResponseGetFDMode = 0x7D,
 	EP1_CF02A_CMD_ResponseGetStoreEnable = 0x7E,
+	EP1_CF02A_CMD_ResponseGetCanStatistics = 0x92,
+	EP1_CF02A_CMD_ResponseGetStoreMaxDuration = 0x95,
 	EP1_CF02A_CMD_ResponseGetCapabilities = 0xF0,
 };
 
@@ -71,7 +78,6 @@ enum EP1_CF02A_CMD {
  * @brief command length (not payload size)
  */
 /*** Request ***/
-#define EP1_CF02A_CMD_LENGTH_RESET_CAN_SUMMARY (4)
 #define EP1_CF02A_CMD_LENGTH_SET_SILENT_MODE (5)
 #define EP1_CF02A_CMD_LENGTH_GET_SILENT_MODE (4)
 #define EP1_CF02A_CMD_LENGTH_SET_FD_MODE (5)
@@ -95,17 +101,22 @@ enum EP1_CF02A_CMD {
 #define EP1_CF02A_CMD_LENGTH_GET_STORE_DATA_ID_LIST_COUNT (4)
 #define EP1_CF02A_CMD_LENGTH_GET_STORE_DATA_ID (8)
 #define EP1_CF02A_CMD_LENGTH_GET_STORE_DATA_META (36)
-#define EP1_CF02A_CMD_LENGTH_SET_STORE_DATA_RX_CONTROL (39)
+#define EP1_CF02A_CMD_LENGTH_SET_STORE_DATA_RX_CONTROL (45)
 #define EP1_CF02A_CMD_LENGTH_GET_STORE_DATA_RX_CONTROL (4)
+#define EP1_CF02A_CMD_LENGTH_REQUEST_NOTIFY_RECV_CAN_FRAME (4)
 #define EP1_CF02A_CMD_LENGTH_DELETE_STORE_DATA (36)
 #define EP1_CF02A_CMD_LENGTH_INIT_STORE_DATA_MEDIA (4)
 #define EP1_CF02A_CMD_LENGTH_SET_STORE_ENABLE (5)
 #define EP1_CF02A_CMD_LENGTH_GET_STORE_ENABLE (4)
+#define EP1_CF02A_CMD_LENGTH_SET_STORE_MAX_DURATION (8)
+#define EP1_CF02A_CMD_LENGTH_GET_STORE_MAX_DURATION (4)
 #define EP1_CF02A_CMD_LENGTH_GET_CAPABILITIES (4)
+#define EP1_CF02A_CMD_LENGTH_GET_CAN_STATISTICS (4)
+#define EP1_CF02A_CMD_LENGTH_RESET_CAN_STATISTICS (4)
 /*** Notify ***/
-#define EP1_CF02A_CMD_LENGTH_NOTIFY_CAN_SUMMARY (78)
 #define EP1_CF02A_CMD_LENGTH_NOTIFY_RECV_CAN_FRAME (82)
 #define EP1_CF02A_CMD_LENGTH_NOTIFY_STORE_DATA_RECV_CAN_FRAME (82)
+#define EP1_CF02A_CMD_LENGTH_NOTIFY_STORE_DATA_RECV_CAN_FRAME_COMPLETE (4)
 /*** Response ***/
 #define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_SILENT_MODE (5)
 #define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_FD_MODE (5)
@@ -120,9 +131,11 @@ enum EP1_CF02A_CMD {
 #define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_DATA_ID_LIST_COUNT (8)
 #define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_DATA_ID (36)
 #define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_DATA_META (47)
-#define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_DATA_RX_CONTROL (39)
+#define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_DATA_RX_CONTROL (45)
 #define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_ENABLE (5)
-#define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_CAPABILITIES (5)
+#define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_MAX_DURATION (8)
+#define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_CAPABILITIES (12)
+#define EP1_CF02A_CMD_LENGTH_RESPONSE_GET_CAN_STATISTICS (76)
 
 #define EP1_CF02A_CMD_STORE_DATA_ID_MAX_LENGTH (32)
 
@@ -305,7 +318,7 @@ typedef struct ep1_cf02a_msg_get_store_data_meta_response_s ep1_cf02a_msg_get_st
 struct ep1_cf02a_msg_set_store_data_rx_control_s {
 	char id[EP1_CF02A_CMD_STORE_DATA_ID_MAX_LENGTH];
 	u8 start;
-	u16 interval;
+	u64 can_frame_count_per_request;
 };
 typedef struct ep1_cf02a_msg_set_store_data_rx_control_s ep1_cf02a_msg_store_data_rx_control_t;
 typedef struct ep1_cf02a_msg_set_store_data_rx_control_s ep1_cf02a_msg_get_store_data_rx_control_t;
@@ -329,12 +342,36 @@ typedef struct ep1_cf02a_msg_store_enable_s ep1_cf02a_msg_get_store_enable_t;
 typedef struct ep1_cf02a_msg_store_enable_s ep1_cf02a_msg_set_store_enable_t;
 
 /*!
+ * @brief message structure - store max duration
+ */
+struct ep1_cf02a_msg_store_max_duration_s {
+	u32 max_duration;
+};
+typedef struct ep1_cf02a_msg_store_max_duration_s ep1_cf02a_msg_get_store_max_duration_t;
+typedef struct ep1_cf02a_msg_store_max_duration_s ep1_cf02a_msg_set_store_max_duration_t;
+
+/*!
  * @brief message structure - get capabilities
  */
 struct ep1_cf02a_msg_capabilities_s {
 	u64 capabilities;
 };
 typedef struct ep1_cf02a_msg_capabilities_s ep1_cf02a_msg_get_capabilities_t;
+
+/*!
+ * @brief message structure - get can statistics
+ */
+struct ep1_cf02a_msg_get_can_statistics_s {
+	u32 rx_dropped;
+	u8 can_state;
+	u8 reserved1[3];
+	u8 reserved2[64];
+};
+typedef struct ep1_cf02a_msg_get_can_statistics_s ep1_cf02a_msg_get_can_statistics_t;
+
+#define EP1_CF02A_CAN_FRAME_FLAG_BRS BIT(0)
+#define EP1_CF02A_CAN_FRAME_FLAG_ESI BIT(1)
+#define EP1_CF02A_CAN_FRAME_FLAG_FDF BIT(2)
 
 /*!
  * @brief payload structure - notify recv can frame
@@ -358,15 +395,6 @@ struct ep1_cf02a_payload_send_can_frame_s {
 	u8 data[64];
 };
 typedef struct ep1_cf02a_payload_send_can_frame_s ep1_cf02a_payload_send_can_frame_t;
-
-/*!
- * @brief payload structure - notify recv can summary
- */
-struct ep1_cf02a_payload_notify_recv_can_summary_s {
-	u32 rx_count;
-	struct canfd_frame frame;
-};
-typedef struct ep1_cf02a_payload_notify_recv_can_summary_s ep1_cf02a_payload_notify_recv_can_summary_t;
 
 #pragma pack(pop)
 

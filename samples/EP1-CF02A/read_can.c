@@ -41,13 +41,15 @@ array_to_uint(unsigned char* array)
 }
 
 static void
-timespec_add(struct timespec* ts, unsigned int sec, unsigned int nsec)
+timespec_sub(const struct timespec* base,
+             const struct timespec* sub,
+             struct timespec* result)
 {
-    ts->tv_sec += sec;
-    ts->tv_nsec += nsec;
-    if (ts->tv_nsec >= 1000000000) {
-        ts->tv_sec++;
-        ts->tv_nsec -= 1000000000;
+    result->tv_sec = base->tv_sec - sub->tv_sec;
+    result->tv_nsec = base->tv_nsec - sub->tv_nsec;
+    if (result->tv_nsec < 0) {
+        result->tv_sec--;
+        result->tv_nsec += 1000000000;
     }
 }
 
@@ -57,7 +59,8 @@ print_canfd_frame(struct timespec* timestamp, struct canfd_frame* frame)
     printf("[%ld.%09ld] id: %x (%s), len: %d, flags: %x, data: ",
            timestamp->tv_sec,
            timestamp->tv_nsec,
-           (frame->can_id & CAN_EFF_FLAG) ? (frame->can_id & CAN_EFF_MASK) : (frame->can_id & CAN_SFF_MASK),
+           (frame->can_id & CAN_EFF_FLAG) ? (frame->can_id & CAN_EFF_MASK)
+                                          : (frame->can_id & CAN_SFF_MASK),
            (frame->can_id & CAN_EFF_FLAG) ? "ext" : "std",
            frame->len,
            frame->flags);
@@ -78,6 +81,7 @@ help()
     printf("  --fd <on|off>, Set CAN FD mode.\n");
     printf("  --dbitrate <bps>, Set CAN data bitrate\n");
     printf("  --dsample-point <sample-point>, Set CAN data sample point.\n");
+    printf("  --listen-only <on|off>, Set listen-only mode.\n");
     printf("  --skip-ioctl,  Skip ioctl for simultaneous read/write on one "
            "device.\n");
     printf("  --help, Show this help text.\n");
@@ -98,7 +102,7 @@ main(int argc, char* argv[])
      */
     int fd;
     int result;
-    struct timespec basetime;
+    struct timespec reset_ts;
 
     const char* devpath = "/dev/aptUSB0";
     int bitrate = 500000;
@@ -106,6 +110,7 @@ main(int argc, char* argv[])
     bool fd_mode = true;
     int dbitrate = 2000000;
     int dsample_point = 0;
+    bool listen_only = true;
     bool skip_ioctl = false;
 
     static struct option long_options[] = {
@@ -115,6 +120,7 @@ main(int argc, char* argv[])
         { "fd", required_argument, NULL, 'f' },
         { "dbitrate", required_argument, NULL, 'B' },
         { "dsample-point", required_argument, NULL, 'S' },
+        { "listen-only", required_argument, NULL, 'l' },
         { "skip-ioctl", no_argument, NULL, 'i' },
         { "help", no_argument, NULL, 'h' },
         { 0, 0, 0, 0 }
@@ -122,7 +128,7 @@ main(int argc, char* argv[])
 
     int opt;
     while ((opt = getopt_long(
-              argc, argv, "d:b:s:f:B:S:ih", long_options, NULL)) != -1) {
+              argc, argv, "d:b:s:f:B:S:l:ih", long_options, NULL)) != -1) {
         switch (opt) {
         case 'd':
             devpath = optarg;
@@ -141,6 +147,9 @@ main(int argc, char* argv[])
             break;
         case 'S':
             dsample_point = atoi(optarg);
+            break;
+        case 'l':
+            listen_only = (strcmp(optarg, "on") == 0) ? true : false;
             break;
         case 'i':
             skip_ioctl = true;
@@ -167,6 +176,7 @@ main(int argc, char* argv[])
         printf("CAN data bitrate: %d\n", dbitrate);
         printf("CAN data sample point: %d\n", dsample_point);
     }
+    printf("Listen-only mode: %s\n", listen_only ? "on" : "off");
     printf("Skip ioctl: %s\n", skip_ioctl ? "true" : "false");
 
     /* Open device */
@@ -179,10 +189,10 @@ main(int argc, char* argv[])
     if (!skip_ioctl) {
         {
             /*
-             * Setting up Silent mode
+             * Setting up Silent mode (listen-only)
              */
             ep1_cf02a_ioctl_set_silent_mode_t silent_mode;
-            silent_mode.silent = true;
+            silent_mode.silent = listen_only;
             result = ioctl(fd, EP1_CF02A_IOCTL_SET_SILENT_MODE, &silent_mode);
             if (result == -1) {
                 printf("ioctl().. Error, <errno:%d> cmd=%s\n",
@@ -212,13 +222,15 @@ main(int argc, char* argv[])
 
         {
             /*
-            * Setting up FD mode
-            */
+             * Setting up FD mode
+             */
             ep1_cf02a_ioctl_set_fd_mode_t set_fd_mode;
             set_fd_mode.fd = fd_mode;
             result = ioctl(fd, EP1_CF02A_IOCTL_SET_FD_MODE, &set_fd_mode);
             if (result == -1) {
-                printf("ioctl().. Error, <errno:%d> cmd=%s\n", errno, "EP1_CF02A_IOCTL_SET_FD_MODE");
+                printf("ioctl().. Error, <errno:%d> cmd=%s\n",
+                       errno,
+                       "EP1_CF02A_IOCTL_SET_FD_MODE");
                 close(fd);
                 return EXIT_FAILURE;
             }
@@ -227,15 +239,15 @@ main(int argc, char* argv[])
         if (fd_mode) {
             {
                 /*
-                * Setting up ISO mode
-                */
+                 * Setting up ISO mode
+                 */
                 ep1_cf02a_ioctl_set_iso_mode_t iso_mode;
                 iso_mode.non_iso_mode = false;
                 result = ioctl(fd, EP1_CF02A_IOCTL_SET_ISO_MODE, &iso_mode);
                 if (result == -1) {
                     printf("ioctl().. Error, <errno:%d> cmd=%s\n",
-                        errno,
-                        "EP1_CF02A_IOCTL_SET_ISO_MODE");
+                           errno,
+                           "EP1_CF02A_IOCTL_SET_ISO_MODE");
                     close(fd);
                     return EXIT_FAILURE;
                 }
@@ -243,16 +255,17 @@ main(int argc, char* argv[])
 
             {
                 /*
-                * Setting up CAN data bitrate
-                */
+                 * Setting up CAN data bitrate
+                 */
                 ep1_cf02a_ioctl_set_data_bitrate_t set_dbitrate;
                 set_dbitrate.bitrate = dbitrate;
                 set_dbitrate.sample_point = dsample_point;
-                result = ioctl(fd, EP1_CF02A_IOCTL_SET_DATA_BITRATE, &set_dbitrate);
+                result =
+                  ioctl(fd, EP1_CF02A_IOCTL_SET_DATA_BITRATE, &set_dbitrate);
                 if (result == -1) {
                     printf("ioctl().. Error, <errno:%d> cmd=%s\n",
-                        errno,
-                        "EP1_CF02A_IOCTL_SET_DATA_BITRATE");
+                           errno,
+                           "EP1_CF02A_IOCTL_SET_DATA_BITRATE");
                     close(fd);
                     return EXIT_FAILURE;
                 }
@@ -278,12 +291,26 @@ main(int argc, char* argv[])
         }
     }
 
+    /* Get device timestamp reset time */
+    {
+        ep1_cf02a_ioctl_get_device_timestamp_reset_time_t reset_time;
+        result = ioctl(
+          fd, EP1_CF02A_IOCTL_GET_DEVICE_TIMESTAMP_RESET_TIME, &reset_time);
+        if (result == -1) {
+            printf("ioctl().. Error, <errno:%d> cmd=%s\n",
+                   errno,
+                   "EP1_CF02A_IOCTL_GET_DEVICE_TIMESTAMP_RESET_TIME");
+            close(fd);
+            return EXIT_FAILURE;
+        }
+        reset_ts = reset_time.ts;
+    }
+
     while (!stop_requested) {
         /* Read CAN data */
-        unsigned int sec, usec;
         struct canfd_frame frame = { 0 };
 
-        unsigned char buf[1024];
+        unsigned char buf[EP1_CF02A_CAN_PACKET_SIZE * 64];
         ssize_t rsize = read(fd, buf, sizeof(buf));
         if (rsize == -1) {
             if (errno != EINTR) {
@@ -300,12 +327,13 @@ main(int argc, char* argv[])
         const int packet_num = rsize / EP1_CF02A_CAN_PACKET_SIZE;
         for (int num = 0, pos = 0; num < packet_num;
              ++num, pos += EP1_CF02A_CAN_PACKET_SIZE) {
-            struct timespec timestamp = basetime;
+            struct timespec ts;
+            struct timespec elapsed_ts;
 
             /* Getting timestamp from receiving data */
-            sec = array_to_uint(&buf[pos]);
-            usec = array_to_uint(&buf[pos + 4]);
-            timespec_add(&timestamp, sec, usec * 1000);
+            ts.tv_sec = array_to_uint(&buf[pos]);
+            ts.tv_nsec = array_to_uint(&buf[pos + 4]) * 1000;
+            timespec_sub(&ts, &reset_ts, &elapsed_ts);
 
             /* Getting CAN frame from receiving data */
             frame.can_id = array_to_uint(&buf[pos + 8]);
@@ -313,7 +341,7 @@ main(int argc, char* argv[])
             frame.flags = buf[pos + 13];
             memcpy(frame.data, &buf[pos + 14], CANFD_MAX_DLEN);
 
-            print_canfd_frame(&timestamp, &frame);
+            print_canfd_frame(&elapsed_ts, &frame);
         }
     }
 

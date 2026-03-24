@@ -56,11 +56,12 @@ int apt_usbtrx_ringbuffer_init(apt_usbtrx_ringbuffer_t *ringbuffer, size_t size)
 		return RESULT_Failure;
 	}
 
-	buffer = kzalloc(size, GFP_KERNEL);
+	buffer = vmalloc(size);
 	if (buffer == NULL) {
 		EMSG("vmalloc().. Error");
 		return RESULT_Failure;
 	}
+	memset(buffer, 0, size);
 
 	ringbuffer->buffer = buffer;
 	ringbuffer->buffer_size = size;
@@ -86,7 +87,7 @@ int apt_usbtrx_ringbuffer_term(apt_usbtrx_ringbuffer_t *ringbuffer)
 	}
 
 	if (ringbuffer->buffer != NULL) {
-		kfree(ringbuffer->buffer);
+		vfree(ringbuffer->buffer);
 
 		ringbuffer->buffer = NULL;
 		ringbuffer->buffer_size = 0;

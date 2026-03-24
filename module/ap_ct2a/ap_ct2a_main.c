@@ -22,7 +22,9 @@ static const struct net_device_ops apt_usbtrx_netdev_ops = {
 	.ndo_open = apt_usbtrx_unique_can_netdev_open,
 	.ndo_stop = apt_usbtrx_unique_can_netdev_close,
 	.ndo_start_xmit = apt_usbtrx_unique_can_netdev_start_xmit,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 19, 0)
 	.ndo_change_mtu = can_change_mtu,
+#endif
 };
 
 static const struct can_bittiming_const apt_usbtrx_netdev_bittiming_const = {

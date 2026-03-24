@@ -96,7 +96,7 @@ void apt_usbtrx_delete(struct kref *kref)
 	kfree(dev);
 }
 
-STATIC bool apt_usbtrx_is_dfu(struct usb_interface *intf)
+bool apt_usbtrx_is_dfu(struct usb_interface *intf)
 {
 	const struct usb_host_interface *iface_desc = intf->cur_altsetting;
 	return iface_desc->desc.bInterfaceClass == 0xFF && iface_desc->desc.bInterfaceSubClass == 1;
@@ -279,6 +279,7 @@ STATIC int apt_usbtrx_init_instance(apt_usbtrx_dev_t *dev)
 	dev->fw_count = 0;
 	sema_init(&dev->send_msg_sem, 1);
 	sema_init(&dev->tx_usb_transfer_sem, MAX_TX_URBS);
+	atomic_set(&dev->tx_data_clear_requested, false);
 	dev->tx_transfer_expired = jiffies;
 	dev->tx_transfer_max_token = 0;
 	dev->tx_transfer_token = 0;

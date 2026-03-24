@@ -295,6 +295,26 @@ main(int argc, char* argv[])
         }
     }
 
+    {
+        /*
+         * Check CAN receiving.
+         */
+        ep1_cf02a_ioctl_get_tx_rx_control_t tx_rx_control;
+        do {
+            result = ioctl(fd, EP1_CF02A_IOCTL_GET_TX_RX_CONTROL, &tx_rx_control);
+            if (result == -1) {
+                printf("ioctl().. Error, <errno:%d> cmd=%s\n",
+                    errno,
+                    "EP1_CF02A_IOCTL_GET_TX_RX_CONTROL");
+                close(fd);
+                return EXIT_FAILURE;
+            }
+            if (tx_rx_control.start) {
+                usleep(100000);
+            }
+        } while (tx_rx_control.start);
+    }
+
     close(fd);
 
     return EXIT_SUCCESS;

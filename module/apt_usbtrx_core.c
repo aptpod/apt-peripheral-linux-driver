@@ -582,6 +582,10 @@ static bool apt_usbtrx_is_write_enable(apt_usbtrx_dev_t *dev)
 		return true;
 	}
 
+	if (atomic_read(&dev->tx_data_clear_requested) == true) {
+		return true;
+	}
+
 	return false;
 }
 
@@ -601,12 +605,22 @@ int apt_usbtrx_tx_thread_func(void *arg)
 		int result;
 		int tx_buffer_rate;
 
+		if (atomic_read(&dev->tx_data_clear_requested)) {
+			apt_usbtrx_ringbuffer_clear(&dev->tx_data);
+			atomic_set(&dev->tx_data_clear_requested, false);
+			continue;
+		}
+
 		result = wait_event_interruptible_timeout(dev->tx_data.wq, (apt_usbtrx_is_write_enable(dev) == true),
 							  msecs_to_jiffies(1000));
 		if (result < 0) {
 			if (result != -ERESTARTSYS) {
 				EMSG("wait_event_interruptible().. Error, <errno:%d>", result);
 			}
+			continue;
+		}
+
+		if (result == 0) {
 			continue;
 		}
 

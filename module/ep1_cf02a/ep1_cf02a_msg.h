@@ -148,13 +148,23 @@ int ep1_cf02a_msg_parse_response_get_store_enable(u8 *data, int data_size, void 
 int ep1_cf02a_msg_pack_set_store_enable(void *msg, u8 *data, int data_size);
 
 /*!
+ * @brief parse (Response Get Store Max Duration)
+ */
+int ep1_cf02a_msg_parse_response_get_store_max_duration(u8 *data, int data_size, void *msg);
+
+/*!
+ * @brief pack (Set Store Max Duration)
+ */
+int ep1_cf02a_msg_pack_set_store_max_duration(void *msg, u8 *data, int data_size);
+
+/*!
  * @brief parse (Response Get Capabilities)
  */
 int ep1_cf02a_msg_parse_response_get_capabilities(u8 *data, int data_size, void *msg);
 
 /*!
- * @brief parse (Nofity Receive CAN Summary)
+ * @brief parse (Response Get CAN Statistics)
  */
-int ep1_cf02a_msg_parse_notify_recv_can_summary(u8 *data, int data_size, void *msg);
+int ep1_cf02a_msg_parse_response_get_can_statistics(u8 *data, int data_size, void *msg);
 
 #endif /* __EP1_CF02A_MSG_H__ */

@@ -450,9 +450,15 @@ int ep1_cf02a_msg_parse_response_get_store_data_rx_control(u8 *data, int data_si
 	control->start = data[n] == 0x01 ? true : false;
 	n = n + 1;
 
-	control->interval = data[n];
-	control->interval |= data[n + 1] << 8;
-	n = n + 2;
+	control->can_frame_count_per_request = ((u64)data[n]);
+	control->can_frame_count_per_request |= ((u64)data[n + 1]) << 8;
+	control->can_frame_count_per_request |= ((u64)data[n + 2]) << 16;
+	control->can_frame_count_per_request |= ((u64)data[n + 3]) << 24;
+	control->can_frame_count_per_request |= ((u64)data[n + 4]) << 32;
+	control->can_frame_count_per_request |= ((u64)data[n + 5]) << 40;
+	control->can_frame_count_per_request |= ((u64)data[n + 6]) << 48;
+	control->can_frame_count_per_request |= ((u64)data[n + 7]) << 56;
+	n = n + 8;
 
 	return RESULT_Success;
 }
@@ -471,9 +477,15 @@ int ep1_cf02a_msg_pack_set_store_data_rx_control(void *msg, u8 *data, int data_s
 	data[n] = control->start == true ? 0x01 : 0x00;
 	n = n + 1;
 
-	data[n] = control->interval;
-	data[n + 1] = control->interval >> 8;
-	n = n + 2;
+	data[n] = control->can_frame_count_per_request & 0xFF;
+	data[n + 1] = (control->can_frame_count_per_request >> 8) & 0xFF;
+	data[n + 2] = (control->can_frame_count_per_request >> 16) & 0xFF;
+	data[n + 3] = (control->can_frame_count_per_request >> 24) & 0xFF;
+	data[n + 4] = (control->can_frame_count_per_request >> 32) & 0xFF;
+	data[n + 5] = (control->can_frame_count_per_request >> 40) & 0xFF;
+	data[n + 6] = (control->can_frame_count_per_request >> 48) & 0xFF;
+	data[n + 7] = (control->can_frame_count_per_request >> 56) & 0xFF;
+	n = n + 8;
 
 	return RESULT_Success;
 }
@@ -515,6 +527,30 @@ int ep1_cf02a_msg_pack_set_store_enable(void *msg, u8 *data, int data_size)
 }
 
 /*!
+ * @brief parse (Response Get Store Max Duration)
+ */
+int ep1_cf02a_msg_parse_response_get_store_max_duration(u8 *data, int data_size, void *msg)
+{
+	ep1_cf02a_msg_get_store_max_duration_t *max_duration = (ep1_cf02a_msg_get_store_max_duration_t *)msg;
+
+	memcpy(&max_duration->max_duration, data, sizeof(max_duration->max_duration));
+
+	return RESULT_Success;
+}
+
+/*!
+ * @brief pack (Set Store Max Duration)
+ */
+int ep1_cf02a_msg_pack_set_store_max_duration(void *msg, u8 *data, int data_size)
+{
+	ep1_cf02a_msg_set_store_max_duration_t *max_duration = (ep1_cf02a_msg_set_store_max_duration_t *)msg;
+
+	memcpy(data, &max_duration->max_duration, sizeof(max_duration->max_duration));
+
+	return RESULT_Success;
+}
+
+/*!
  * @brief parse (Response Get Capabilities)
  */
 int ep1_cf02a_msg_parse_response_get_capabilities(u8 *data, int data_size, void *msg)
@@ -526,42 +562,13 @@ int ep1_cf02a_msg_parse_response_get_capabilities(u8 *data, int data_size, void 
 	return RESULT_Success;
 }
 
-static u8 can_dlc2len(u8 dlc)
-{
-	static const u8 dlc_to_len[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64 };
-	if (dlc >= 0 && dlc <= 15) {
-		return dlc_to_len[dlc];
-	} else {
-		EMSG("can_dlc2len().. Error, <dlc:%d>", dlc);
-		return 0;
-	}
-}
-
 /*!
- * @brief parse (Nofity Receive CAN Summary)
+ * @brief parse (Response Get CAN Statistics)
  */
-int ep1_cf02a_msg_parse_notify_recv_can_summary(u8 *data, int data_size, void *msg)
+int ep1_cf02a_msg_parse_response_get_can_statistics(u8 *data, int data_size, void *msg)
 {
-	ep1_cf02a_payload_notify_recv_can_summary_t *summary = (ep1_cf02a_payload_notify_recv_can_summary_t *)msg;
-	int n = 0;
-
-	summary->rx_count = data[n];
-	summary->rx_count |= data[n + 1] << 8;
-	summary->rx_count |= data[n + 2] << 16;
-	summary->rx_count |= data[n + 3] << 24;
-	n = n + 4;
-
-	summary->frame.can_id = data[n];
-	summary->frame.can_id |= data[n + 1] << 8;
-	summary->frame.can_id |= data[n + 2] << 16;
-	summary->frame.can_id |= data[n + 3] << 24;
-	n = n + 4;
-
-	summary->frame.len = can_dlc2len(data[n]);
-	n = n + 1;
-
-	memcpy(&summary->frame.data, &data[n], 64);
-	n = n + 64;
+	ep1_cf02a_msg_get_can_statistics_t *statistics = (ep1_cf02a_msg_get_can_statistics_t *)msg;
+	memcpy(statistics, data, sizeof(ep1_cf02a_msg_get_can_statistics_t));
 
 	return RESULT_Success;
 }

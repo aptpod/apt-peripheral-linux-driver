@@ -260,6 +260,10 @@ CAN FD USB Interface 固有の値は以下の通りです。
 | EP1_CF02A_IOCTL_READ_STORE_DATA | 蓄積データ受信 |
 | EP1_CF02A_IOCTL_DELETE_STORE_DATA | 蓄積データ削除 |
 | EP1_CF02A_IOCTL_INIT_STORE_DATA_MEDIA | 蓄積データメディア初期化 |
+| EP1_CF02A_IOCTL_GET_STORE_ENABLE | 蓄積データ有効状態取得 |
+| EP1_CF02A_IOCTL_SET_STORE_ENABLE | 蓄積データ有効状態設定 |
+| EP1_CF02A_IOCTL_GET_STORE_MAX_DURATION | 蓄積データ最大記録時間取得 |
+| EP1_CF02A_IOCTL_SET_STORE_MAX_DURATION | 蓄積データ最大記録時間設定 |
 
 ### General return values
 
@@ -717,7 +721,7 @@ ioctl(fd, EP1_CF02A_IOCTL_GET_STORE_DATA_RX_CONTROL, &control);
 `ep1_cf02a_ioctl_get_store_data_rx_control_t` 型で返します。
 
 ### EP1_CF02A_IOCTL_SET_STORE_DATA_RX_CONTROL
-指定した蓄積データIDのCAN受信開始/停止や、受信間隔を設定します。
+指定した蓄積データIDのCAN受信開始/停止を設定します。
 #### Usage
 ```c
 ep1_cf02a_ioctl_set_store_data_rx_control_t control;
@@ -767,6 +771,96 @@ none
 #### Outputs
 none
 
+### EP1_CF02A_IOCTL_GET_STORE_ENABLE
+
+蓄積データの有効状態を取得します。
+
+#### Usage
+
+```c
+ep1_cf02a_ioctl_get_store_enable_t enable;
+ioctl(fd, EP1_CF02A_IOCTL_GET_STORE_ENABLE, &enable);
+```
+
+#### Inputs
+none
+
+#### Outputs
+
+`ep1_cf02a_ioctl_get_store_enable_t` 型で返します。
+
+| member | description |
+| ------ | ---- |
+| enable | 蓄積データ有効状態（true: 有効, false: 無効） |
+
+### EP1_CF02A_IOCTL_SET_STORE_ENABLE
+
+蓄積データの有効状態を設定します。
+
+#### Usage
+
+```c
+ep1_cf02a_ioctl_set_store_enable_t enable;
+enable.enable = true;
+ioctl(fd, EP1_CF02A_IOCTL_SET_STORE_ENABLE, &enable);
+```
+
+#### Inputs
+
+`ep1_cf02a_ioctl_set_store_enable_t` 型で入力します。
+
+| member | description |
+| ------ | ---- |
+| enable | 蓄積データ有効状態（true: 有効, false: 無効） |
+
+#### Outputs
+none
+
+### EP1_CF02A_IOCTL_GET_STORE_MAX_DURATION
+
+蓄積データの最大記録時間を取得します。
+
+#### Usage
+
+```c
+ep1_cf02a_ioctl_get_store_max_duration_t max_duration;
+ioctl(fd, EP1_CF02A_IOCTL_GET_STORE_MAX_DURATION, &max_duration);
+```
+
+#### Inputs
+none
+
+#### Outputs
+
+`ep1_cf02a_ioctl_get_store_max_duration_t` 型で返します。
+
+| member | description |
+| ------ | ---- |
+| max_duration | 最大記録時間（秒）。0の場合は無制限 |
+
+### EP1_CF02A_IOCTL_SET_STORE_MAX_DURATION
+
+蓄積データの最大記録時間を設定します。
+
+#### Usage
+
+```c
+ep1_cf02a_ioctl_set_store_max_duration_t max_duration;
+max_duration.max_duration = 300; // 5分
+ioctl(fd, EP1_CF02A_IOCTL_SET_STORE_MAX_DURATION, &max_duration);
+```
+
+#### Inputs
+
+`ep1_cf02a_ioctl_set_store_max_duration_t` 型で入力します。
+
+| member | description |
+| ------ | ---- |
+| max_duration | 最大記録時間（秒）。0を設定すると無制限 |
+
+#### Outputs
+none
+
 ## sysfs
 
 デバイスが保持している CAN 受信に関する集計情報を一定周期でデバイスから受信します。受信したデータは sysfs 上に書き込まれます。書き込まれるデータは以下の通りです。
@@ -774,12 +868,9 @@ none
 | file name          | mode | description                           |
 | ------------------ | ---- | ------------------------------------- |
 | store_data_enabled | R    | 蓄積データ取得の有効／無効状態        |
-| datcnt             | R    | 標準 ID の CAN データフレーム受信数   |
-| ext_datcnt         | R    | 拡張 ID の CAN データフレーム受信数   |
-| rtrcnt             | R    | 標準 ID の CAN リモートフレーム受信数 |
-| ext_rtrcnt         | R    | 拡張 ID の CAN リモートフレーム受信数 |
-| errcnt             | R    | エラーフレーム受信数                  |
-| cnt_timestamp      | R    | 最終更新日時                          |
+| fw_rx_dropped      | R    | FW内部フレームドロップ数 |
+| can_state          | R    | CAN状態（ERROR-ACTIVE/ERROR-WARNING/ERROR-PASSIVE/BUS-OFF） |
+| reset_fw_statistics| W    | FW統計情報リセット（任意の値を書き込みでリセット実行） |
 | can_clock          | R    | CANクロック周波数 |
 | bt_prop_seg        | R    | ビットタイミング prog_seg |
 | bt_phase_seg1      | R    | ビットタイミング phase_seg1 |

@@ -1,5 +1,6 @@
 
-KERNEL=="aptUSB[0-9]*",MODE="0666"
+# NOTE: when adding new writable sysfs attributes, update the chmod list below
+KERNEL=="aptUSB[0-9]*",MODE="0666",RUN+="/bin/sh -c 'chmod a+w /sys%p/device/basetime_clock_id /sys%p/device/reset_fw_statistics 2>/dev/null || true'"
 KERNEL=="aptDFU[0-9]*",MODE="0666"
 
 ACTION=="remove", GOTO="end"

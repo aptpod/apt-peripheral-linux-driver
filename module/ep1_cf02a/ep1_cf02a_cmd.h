@@ -128,6 +128,11 @@ int ep1_cf02a_set_store_data_rx_control(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set
 					bool *success);
 
 /*!
+ * @brief request notify recv can frame
+ */
+int ep1_cf02a_request_notify_recv_can_frame(apt_usbtrx_dev_t *dev, bool *success);
+
+/*!
  * @brief delete store data
  */
 int ep1_cf02a_delete_store_data(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_delete_store_data_t *data, bool *success);
@@ -148,8 +153,29 @@ int ep1_cf02a_get_store_enable(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_store_en
 int ep1_cf02a_set_store_enable(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_store_enable_t *enable, bool *success);
 
 /*!
+ * @brief get store max duration
+ */
+int ep1_cf02a_get_store_max_duration(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_store_max_duration_t *max_duration);
+
+/*!
+ * @brief set store max duration
+ */
+int ep1_cf02a_set_store_max_duration(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_store_max_duration_t *max_duration,
+				     bool *success);
+
+/*!
  * @brief get capabilities
  */
 int ep1_cf02a_get_capabilities(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_capabilities_t *capabilities);
+
+/*!
+ * @brief get can statistics
+ */
+int ep1_cf02a_get_can_statistics(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_can_statistics_t *statistics);
+
+/*!
+ * @brief reset can statistics
+ */
+int ep1_cf02a_reset_can_statistics(apt_usbtrx_dev_t *dev, bool *success);
 
 #endif /* __EP1_CF02A_CMD_H__ */

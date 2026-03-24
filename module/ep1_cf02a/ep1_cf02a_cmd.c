@@ -11,6 +11,8 @@
 #include "ep1_cf02a_cmd.h"
 #include "ep1_cf02a_msg.h"
 
+#define EP1_CF02A_CMD_FLASH_MEMORY_WRITE_RECV_TIMEOUT (APT_USBTRX_RECV_TIMEOUT * 10)
+
 /*!
  * @brief cmd common
  */
@@ -169,7 +171,8 @@ int ep1_cf02a_get_silent_mode(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_silent_mo
 int ep1_cf02a_set_silent_mode(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_silent_mode_t *mode, bool *success)
 {
 	return ep1_cf02a_set_common(dev, mode, EP1_CF02A_CMD_LENGTH_SET_SILENT_MODE, EP1_CF02A_CMD_SetSilentMode,
-				    ep1_cf02a_msg_pack_set_silent_mode, success, APT_USBTRX_RECV_TIMEOUT);
+				    ep1_cf02a_msg_pack_set_silent_mode, success,
+				    EP1_CF02A_CMD_FLASH_MEMORY_WRITE_RECV_TIMEOUT);
 }
 
 /*!
@@ -189,7 +192,8 @@ int ep1_cf02a_get_fd_mode(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_fd_mode_t *mo
 int ep1_cf02a_set_fd_mode(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_fd_mode_t *mode, bool *success)
 {
 	return ep1_cf02a_set_common(dev, mode, EP1_CF02A_CMD_LENGTH_SET_FD_MODE, EP1_CF02A_CMD_SetFDMode,
-				    ep1_cf02a_msg_pack_set_fd_mode, success, APT_USBTRX_RECV_TIMEOUT);
+				    ep1_cf02a_msg_pack_set_fd_mode, success,
+				    EP1_CF02A_CMD_FLASH_MEMORY_WRITE_RECV_TIMEOUT);
 }
 
 /*!
@@ -209,7 +213,8 @@ int ep1_cf02a_get_iso_mode(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_iso_mode_t *
 int ep1_cf02a_set_iso_mode(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_iso_mode_t *mode, bool *success)
 {
 	return ep1_cf02a_set_common(dev, mode, EP1_CF02A_CMD_LENGTH_SET_ISO_MODE, EP1_CF02A_CMD_SetISOMode,
-				    ep1_cf02a_msg_pack_set_iso_mode, success, APT_USBTRX_RECV_TIMEOUT);
+				    ep1_cf02a_msg_pack_set_iso_mode, success,
+				    EP1_CF02A_CMD_FLASH_MEMORY_WRITE_RECV_TIMEOUT);
 }
 
 static int ep1_cf02a_check_bit_timing(const struct can_bittiming_const *btc,
@@ -279,7 +284,8 @@ int ep1_cf02a_set_bit_timing(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_bit_timing
 	}
 
 	result = ep1_cf02a_set_common(dev, timing, EP1_CF02A_CMD_LENGTH_SET_BIT_TIMING, EP1_CF02A_CMD_SetBitTiming,
-				      ep1_cf02a_msg_pack_set_bit_timing, success, APT_USBTRX_RECV_TIMEOUT);
+				      ep1_cf02a_msg_pack_set_bit_timing, success,
+				      EP1_CF02A_CMD_FLASH_MEMORY_WRITE_RECV_TIMEOUT);
 	if (result != RESULT_Success) {
 		return result;
 	}
@@ -331,7 +337,7 @@ int ep1_cf02a_set_data_bit_timing(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_data_
 
 	result = ep1_cf02a_set_common(dev, timing, EP1_CF02A_CMD_LENGTH_SET_DATA_BIT_TIMING,
 				      EP1_CF02A_CMD_SetDataBitTiming, ep1_cf02a_msg_pack_set_data_bit_timing, success,
-				      APT_USBTRX_RECV_TIMEOUT);
+				      EP1_CF02A_CMD_FLASH_MEMORY_WRITE_RECV_TIMEOUT);
 	if (result != RESULT_Success) {
 		return result;
 	}
@@ -507,12 +513,24 @@ int ep1_cf02a_set_store_data_rx_control(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set
 }
 
 /*!
+ * @brief request notify recv can frame
+ */
+int ep1_cf02a_request_notify_recv_can_frame(apt_usbtrx_dev_t *dev, bool *success)
+{
+	return ep1_cf02a_set_common(dev, NULL, EP1_CF02A_CMD_LENGTH_REQUEST_NOTIFY_RECV_CAN_FRAME,
+				    EP1_CF02A_CMD_RequestNotifyRecvCANFrame, NULL, success, APT_USBTRX_RECV_TIMEOUT);
+}
+
+/*!
  * @brief delete store data
  */
 int ep1_cf02a_delete_store_data(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_delete_store_data_t *data, bool *success)
 {
+	/* Extend timeout because initialization takes time */
+	unsigned int timeout_msec = APT_USBTRX_RECV_TIMEOUT * 10;
+
 	return ep1_cf02a_set_common(dev, data, EP1_CF02A_CMD_LENGTH_DELETE_STORE_DATA, EP1_CF02A_CMD_DeleteStoreData,
-				    ep1_cf02a_msg_pack_delete_store_data, success, APT_USBTRX_RECV_TIMEOUT);
+				    ep1_cf02a_msg_pack_delete_store_data, success, timeout_msec);
 }
 
 /*!
@@ -544,7 +562,30 @@ int ep1_cf02a_get_store_enable(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_store_en
 int ep1_cf02a_set_store_enable(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_store_enable_t *enable, bool *success)
 {
 	return ep1_cf02a_set_common(dev, enable, EP1_CF02A_CMD_LENGTH_SET_STORE_ENABLE, EP1_CF02A_CMD_SetStoreEnable,
-				    ep1_cf02a_msg_pack_set_store_enable, success, APT_USBTRX_RECV_TIMEOUT);
+				    ep1_cf02a_msg_pack_set_store_enable, success,
+				    EP1_CF02A_CMD_FLASH_MEMORY_WRITE_RECV_TIMEOUT);
+}
+
+/*!
+ * @brief get store max duration
+ */
+int ep1_cf02a_get_store_max_duration(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_store_max_duration_t *max_duration)
+{
+	return ep1_cf02a_get_common(dev, max_duration, EP1_CF02A_CMD_LENGTH_GET_STORE_MAX_DURATION,
+				    EP1_CF02A_CMD_LENGTH_RESPONSE_GET_STORE_MAX_DURATION,
+				    EP1_CF02A_CMD_GetStoreMaxDuration, EP1_CF02A_CMD_ResponseGetStoreMaxDuration,
+				    ep1_cf02a_msg_parse_response_get_store_max_duration, APT_USBTRX_RECV_TIMEOUT);
+}
+
+/*!
+ * @brief set store max duration
+ */
+int ep1_cf02a_set_store_max_duration(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_set_store_max_duration_t *max_duration,
+				     bool *success)
+{
+	return ep1_cf02a_set_common(dev, max_duration, EP1_CF02A_CMD_LENGTH_SET_STORE_MAX_DURATION,
+				    EP1_CF02A_CMD_SetStoreMaxDuration, ep1_cf02a_msg_pack_set_store_max_duration,
+				    success, EP1_CF02A_CMD_FLASH_MEMORY_WRITE_RECV_TIMEOUT);
 }
 
 /*!
@@ -556,4 +597,24 @@ int ep1_cf02a_get_capabilities(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_capabili
 				    EP1_CF02A_CMD_LENGTH_RESPONSE_GET_CAPABILITIES, EP1_CF02A_CMD_GetCapabilities,
 				    EP1_CF02A_CMD_ResponseGetCapabilities,
 				    ep1_cf02a_msg_parse_response_get_capabilities, APT_USBTRX_RECV_TIMEOUT);
+}
+
+/*!
+ * @brief get can statistics
+ */
+int ep1_cf02a_get_can_statistics(apt_usbtrx_dev_t *dev, ep1_cf02a_msg_get_can_statistics_t *statistics)
+{
+	return ep1_cf02a_get_common(dev, statistics, EP1_CF02A_CMD_LENGTH_GET_CAN_STATISTICS,
+				    EP1_CF02A_CMD_LENGTH_RESPONSE_GET_CAN_STATISTICS, EP1_CF02A_CMD_GetCanStatistics,
+				    EP1_CF02A_CMD_ResponseGetCanStatistics,
+				    ep1_cf02a_msg_parse_response_get_can_statistics, APT_USBTRX_RECV_TIMEOUT);
+}
+
+/*!
+ * @brief reset can statistics
+ */
+int ep1_cf02a_reset_can_statistics(apt_usbtrx_dev_t *dev, bool *success)
+{
+	return ep1_cf02a_set_common(dev, NULL, EP1_CF02A_CMD_LENGTH_RESET_CAN_STATISTICS,
+				    EP1_CF02A_CMD_ResetCanStatistics, NULL, success, APT_USBTRX_RECV_TIMEOUT);
 }

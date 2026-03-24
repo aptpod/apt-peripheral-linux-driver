@@ -21,7 +21,7 @@
 /*!
  * @brief message length macro
  */
-#define APT_USBTRX_MSG_LENGTH_TO_PAYLOAD(length) ((length)-4)
+#define APT_USBTRX_MSG_LENGTH_TO_PAYLOAD(length) ((length) - 4)
 #define APT_USBTRX_PAYLOAD_LENGTH_TO_MSG(length) ((length) + 4)
 
 /*!

@@ -6,6 +6,7 @@
 #include "../apt_usbtrx_def.h"
 #include "ep1_cf02a_sysfs.h"
 #include "ep1_cf02a_def.h"
+#include "ep1_cf02a_cmd.h"
 
 /*!
  * @brief store data enabled
@@ -20,102 +21,97 @@ static ssize_t ep1_cf02a_sysfs_store_data_enabled_show(struct device *dev, struc
 static DEVICE_ATTR(store_data_enabled, S_IRUGO, ep1_cf02a_sysfs_store_data_enabled_show, NULL);
 
 /*!
- * @brief can data (std)
+ * @brief fw rx frame errors
  */
-static ssize_t ep1_cf02a_sysfs_datcnt_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t ep1_cf02a_sysfs_fw_rx_dropped_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	apt_usbtrx_dev_t *usbtrx_dev = dev_get_drvdata(dev);
-	ep1_cf02a_unique_data_t *unique_data = get_unique_data(usbtrx_dev);
+	ep1_cf02a_msg_get_can_statistics_t statistics;
+	int result;
 
-	return sprintf(buf, "%u\n", unique_data->summary.dat_std.total_num);
-}
-
-static DEVICE_ATTR(datcnt, S_IRUGO, ep1_cf02a_sysfs_datcnt_show, NULL);
-
-/*!
- * @brief can data (ext)
- */
-static ssize_t ep1_cf02a_sysfs_ext_datcnt_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	apt_usbtrx_dev_t *usbtrx_dev = dev_get_drvdata(dev);
-	ep1_cf02a_unique_data_t *unique_data = get_unique_data(usbtrx_dev);
-
-	return sprintf(buf, "%u\n", unique_data->summary.dat_ext.total_num);
-}
-
-static DEVICE_ATTR(ext_datcnt, S_IRUGO, ep1_cf02a_sysfs_ext_datcnt_show, NULL);
-
-/*!
- * @brief rtr data (std)
- */
-static ssize_t ep1_cf02a_sysfs_rtrcnt_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	apt_usbtrx_dev_t *usbtrx_dev = dev_get_drvdata(dev);
-	ep1_cf02a_unique_data_t *unique_data = get_unique_data(usbtrx_dev);
-
-	return sprintf(buf, "%u\n", unique_data->summary.rtr_std.total_num);
-}
-
-static DEVICE_ATTR(rtrcnt, S_IRUGO, ep1_cf02a_sysfs_rtrcnt_show, NULL);
-
-/*!
- * @brief rtr data (ext)
- */
-static ssize_t ep1_cf02a_sysfs_ext_rtrcnt_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	apt_usbtrx_dev_t *usbtrx_dev = dev_get_drvdata(dev);
-	ep1_cf02a_unique_data_t *unique_data = get_unique_data(usbtrx_dev);
-
-	return sprintf(buf, "%u\n", unique_data->summary.rtr_ext.total_num);
-}
-
-static DEVICE_ATTR(ext_rtrcnt, S_IRUGO, ep1_cf02a_sysfs_ext_rtrcnt_show, NULL);
-
-/*!
- * @brief err data
- */
-static ssize_t ep1_cf02a_sysfs_errcnt_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	apt_usbtrx_dev_t *usbtrx_dev = dev_get_drvdata(dev);
-	ep1_cf02a_unique_data_t *unique_data = get_unique_data(usbtrx_dev);
-
-	return sprintf(buf, "%u\n", unique_data->summary.err.total_num);
-}
-
-static DEVICE_ATTR(errcnt, S_IRUGO, ep1_cf02a_sysfs_errcnt_show, NULL);
-
-/*!
- * @brief cnt timestamp
- */
-static ssize_t ep1_cf02a_sysfs_cnt_timestamp_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	apt_usbtrx_dev_t *usbtrx_dev = dev_get_drvdata(dev);
-	ep1_cf02a_unique_data_t *unique_data = get_unique_data(usbtrx_dev);
-
-	struct timespec64 ts;
-	ktime_t kt = ktime_set(0, 0);
-
-	if (ktime_compare(kt, unique_data->summary.dat_std.kt) < 0) {
-		kt = unique_data->summary.dat_std.kt;
-	}
-	if (ktime_compare(kt, unique_data->summary.dat_ext.kt) < 0) {
-		kt = unique_data->summary.dat_ext.kt;
-	}
-	if (ktime_compare(kt, unique_data->summary.rtr_std.kt) < 0) {
-		kt = unique_data->summary.rtr_std.kt;
-	}
-	if (ktime_compare(kt, unique_data->summary.rtr_ext.kt) < 0) {
-		kt = unique_data->summary.rtr_ext.kt;
-	}
-	if (ktime_compare(kt, unique_data->summary.err.kt) < 0) {
-		kt = unique_data->summary.err.kt;
+	if (apt_usbtrx_is_dfu(usbtrx_dev->interface)) {
+		return sprintf(buf, "0\n");
 	}
 
-	ts = ktime_to_timespec64(kt);
-	return sprintf(buf, "%lld\n", (s64)ts.tv_sec);
+	result = ep1_cf02a_get_can_statistics(usbtrx_dev, &statistics);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_get_can_statistics().. Error");
+		return sprintf(buf, "0\n");
+	}
+
+	return sprintf(buf, "%u\n", statistics.rx_dropped);
 }
 
-static DEVICE_ATTR(cnt_timestamp, S_IRUGO, ep1_cf02a_sysfs_cnt_timestamp_show, NULL);
+static DEVICE_ATTR(fw_rx_dropped, S_IRUGO, ep1_cf02a_sysfs_fw_rx_dropped_show, NULL);
+
+/*!
+ * @brief fw can state
+ */
+static ssize_t ep1_cf02a_sysfs_can_state_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	apt_usbtrx_dev_t *usbtrx_dev = dev_get_drvdata(dev);
+	ep1_cf02a_msg_get_can_statistics_t statistics;
+	int result;
+	const char *state_str;
+
+	if (apt_usbtrx_is_dfu(usbtrx_dev->interface)) {
+		return sprintf(buf, "unknown\n");
+	}
+
+	result = ep1_cf02a_get_can_statistics(usbtrx_dev, &statistics);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_get_can_statistics().. Error");
+		return sprintf(buf, "unknown\n");
+	}
+
+	switch (statistics.can_state) {
+	case 0:
+		state_str = "ERROR-ACTIVE";
+		break;
+	case 1:
+		state_str = "ERROR-WARNING";
+		break;
+	case 2:
+		state_str = "ERROR-PASSIVE";
+		break;
+	case 3:
+		state_str = "BUS-OFF";
+		break;
+	default:
+		state_str = "unknown";
+		break;
+	}
+
+	return sprintf(buf, "%s\n", state_str);
+}
+
+static DEVICE_ATTR(can_state, S_IRUGO, ep1_cf02a_sysfs_can_state_show, NULL);
+
+/*!
+ * @brief reset fw statistics
+ */
+static ssize_t ep1_cf02a_sysfs_reset_fw_statistics_store(struct device *dev, struct device_attribute *attr,
+							 const char *buf, size_t count)
+{
+	apt_usbtrx_dev_t *usbtrx_dev = dev_get_drvdata(dev);
+	bool success;
+	int result;
+
+	if (apt_usbtrx_is_dfu(usbtrx_dev->interface)) {
+		return count;
+	}
+
+	result = ep1_cf02a_reset_can_statistics(usbtrx_dev, &success);
+	if (result != RESULT_Success || !success) {
+		EMSG("ep1_cf02a_reset_can_statistics().. Error");
+		return -EIO;
+	}
+
+	return count;
+}
+
+/* NOTE: writable attrs must be listed in conf/30-apt-usb.rules */
+static DEVICE_ATTR(reset_fw_statistics, S_IWUSR, NULL, ep1_cf02a_sysfs_reset_fw_statistics_store);
 
 /*!
  * @brief can clock
@@ -241,31 +237,18 @@ int ep1_cf02a_sysfs_init(struct device *dev)
 	if (result != 0) {
 		EMSG("device_create_file().. Error, <name:%s>", "store_data_enabled");
 	}
-	result = device_create_file(dev, &dev_attr_datcnt);
+	result = device_create_file(dev, &dev_attr_fw_rx_dropped);
 	if (result != 0) {
-		EMSG("device_create_file().. Error, <name:%s>", "datcnt");
+		EMSG("device_create_file().. Error, <name:%s>", "fw_rx_dropped");
 	}
-	result = device_create_file(dev, &dev_attr_ext_datcnt);
+	result = device_create_file(dev, &dev_attr_can_state);
 	if (result != 0) {
-		EMSG("device_create_file().. Error, <name:%s>", "ext_datcnt");
+		EMSG("device_create_file().. Error, <name:%s>", "can_state");
 	}
-	result = device_create_file(dev, &dev_attr_rtrcnt);
+	result = device_create_file(dev, &dev_attr_reset_fw_statistics);
 	if (result != 0) {
-		EMSG("device_create_file().. Error, <name:%s>", "rtrcnt");
+		EMSG("device_create_file().. Error, <name:%s>", "reset_fw_statistics");
 	}
-	result = device_create_file(dev, &dev_attr_ext_rtrcnt);
-	if (result != 0) {
-		EMSG("device_create_file().. Error, <name:%s>", "ext_rtrcnt");
-	}
-	result = device_create_file(dev, &dev_attr_errcnt);
-	if (result != 0) {
-		EMSG("device_create_file().. Error, <name:%s>", "errcnt");
-	}
-	result = device_create_file(dev, &dev_attr_cnt_timestamp);
-	if (result != 0) {
-		EMSG("device_create_file().. Error, <name:%s>", "cnt_timestamp");
-	}
-
 	result = device_create_file(dev, &dev_attr_can_clock);
 	if (result != 0) {
 		EMSG("device_create_file().. Error, <name:%s>", "can_clock");
@@ -326,13 +309,9 @@ int ep1_cf02a_sysfs_term(struct device *dev)
 		return RESULT_Failure;
 	}
 	device_remove_file(dev, &dev_attr_store_data_enabled);
-	device_remove_file(dev, &dev_attr_datcnt);
-	device_remove_file(dev, &dev_attr_ext_datcnt);
-	device_remove_file(dev, &dev_attr_rtrcnt);
-	device_remove_file(dev, &dev_attr_ext_rtrcnt);
-	device_remove_file(dev, &dev_attr_errcnt);
-	device_remove_file(dev, &dev_attr_cnt_timestamp);
-
+	device_remove_file(dev, &dev_attr_fw_rx_dropped);
+	device_remove_file(dev, &dev_attr_can_state);
+	device_remove_file(dev, &dev_attr_reset_fw_statistics);
 	device_remove_file(dev, &dev_attr_can_clock);
 
 	device_remove_file(dev, &dev_attr_bt_prop_seg);

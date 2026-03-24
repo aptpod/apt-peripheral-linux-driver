@@ -4,6 +4,7 @@
  * Copyright (C) 2024 aptpod Inc.
  */
 
+#include <endian.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/can.h>
@@ -29,9 +30,37 @@ enum
     RESULT_Failure
 };
 
+#define CAN_FRAME_SIZE 78 //  sizeof(ep1_cf02a_payload_notify_recv_can_frame_t)
+#define BUFFER_FRAME_COUNT 64
+#define BUFFER_SIZE (CAN_FRAME_SIZE * BUFFER_FRAME_COUNT)
+#define MAX_CAN_IDS 256
+
+typedef struct
+{
+    uint32_t can_id;
+    uint64_t last_data;
+    bool has_data;
+} can_data_tracker_t;
+
+typedef struct
+{
+    char id[EP1_CF02A_STORE_DATA_ID_MAX_LENGTH];
+    uint64_t lost_frames;
+    uint64_t error_frames;
+    bool has_data_loss;
+    bool has_error_frames;
+} store_data_result_t;
+
+static can_data_tracker_t can_trackers[MAX_CAN_IDS];
+static int tracker_count = 0;
+static uint64_t total_lost_frames = 0;
+static uint64_t total_error_frames = 0;
+static store_data_result_t* store_results = NULL;
+static int store_data_count = 0;
+static int processed_count = 0;
+
 static volatile bool stop_requested = false;
-static const uint16_t store_data_read_interval = 2000;
-char store_data_read_buffer[4096];
+char store_data_read_buffer[BUFFER_SIZE];
 
 static void
 handle_signal(int signal)
@@ -57,6 +86,113 @@ static unsigned int
 array_to_uint(unsigned char* array)
 {
     return array[0] | (array[1] << 8) | (array[2] << 16) | (array[3] << 24);
+}
+
+static uint64_t
+parse_u64_be(const unsigned char* data, int len)
+{
+    if (len < 8) {
+        return 0;
+    }
+    return be64toh(*(uint64_t*)data);
+}
+
+static can_data_tracker_t*
+find_or_create_tracker(uint32_t can_id)
+{
+    for (int i = 0; i < tracker_count; i++) {
+        if (can_trackers[i].can_id == can_id) {
+            return &can_trackers[i];
+        }
+    }
+
+    if (tracker_count >= MAX_CAN_IDS) {
+        return NULL;
+    }
+
+    can_trackers[tracker_count].can_id = can_id;
+    can_trackers[tracker_count].has_data = false;
+    return &can_trackers[tracker_count++];
+}
+
+static void
+reset_trackers()
+{
+    tracker_count = 0;
+    total_lost_frames = 0;
+    total_error_frames = 0;
+    memset(can_trackers, 0, sizeof(can_trackers));
+}
+
+static bool
+has_errors_or_losses(uint64_t* total_lost, uint64_t* total_error)
+{
+    bool has_any_loss = false;
+    bool has_any_error = false;
+    uint64_t total_all_lost = 0;
+    uint64_t total_all_error = 0;
+
+    for (int i = 0; i < processed_count; i++) {
+        if (store_results[i].has_data_loss) {
+            has_any_loss = true;
+            total_all_lost += store_results[i].lost_frames;
+        }
+        if (store_results[i].has_error_frames) {
+            has_any_error = true;
+            total_all_error += store_results[i].error_frames;
+        }
+    }
+
+    if (total_lost) *total_lost = total_all_lost;
+    if (total_error) *total_error = total_all_error;
+
+    return has_any_loss || has_any_error;
+}
+
+static void
+print_summary(bool is_check_mode)
+{
+    if (!is_check_mode || processed_count == 0) {
+        return;
+    }
+
+    printf("\n--- Summary ---\n");
+
+    uint64_t total_all_lost = 0;
+    uint64_t total_all_error = 0;
+    bool has_any_issues = has_errors_or_losses(&total_all_lost, &total_all_error);
+
+    if (!has_any_issues) {
+        printf("All store data: OK (no data loss, no error frames detected)\n");
+    } else {
+        if (total_all_lost > 0) {
+            printf("Data loss detected in the following store data:\n");
+            for (int i = 0; i < processed_count; i++) {
+                if (store_results[i].has_data_loss) {
+                    printf("  %.*s: %lu lost frames\n",
+                           EP1_CF02A_STORE_DATA_ID_MAX_LENGTH,
+                           store_results[i].id,
+                           store_results[i].lost_frames);
+                }
+            }
+            printf("Total lost frames across all store data: %lu\n",
+                   total_all_lost);
+        }
+
+        if (total_all_error > 0) {
+            printf("Error frames detected in the following store data:\n");
+            for (int i = 0; i < processed_count; i++) {
+                if (store_results[i].has_error_frames) {
+                    printf("  %.*s: %lu error frames\n",
+                           EP1_CF02A_STORE_DATA_ID_MAX_LENGTH,
+                           store_results[i].id,
+                           store_results[i].error_frames);
+                }
+            }
+            printf("Total error frames across all store data: %lu\n",
+                   total_all_error);
+        }
+    }
 }
 
 static void
@@ -102,10 +238,11 @@ version()
 static int
 help()
 {
-    printf("usage: %s [-f <dev name>] [-r] [-h] [-v]\n", PRGNAME);
+    printf("usage: %s [-f <dev name>] [-r] [-c] [-h] [-v]\n", PRGNAME);
     printf("options: \n");
     printf("  -f DEV_NAME,      Set device name\n");
     printf("  -r                Read store data\n");
+    printf("  -c                Incremental check mode (no data display)\n");
     printf("  -h,               This help text\n");
     printf("  -v,               Show version number\n");
 
@@ -214,7 +351,6 @@ set_store_data_rx_control(int fd, const char* id, bool start)
 
     memcpy(store_data_rx_control.id, id, EP1_CF02A_STORE_DATA_ID_MAX_LENGTH);
     store_data_rx_control.start = start;
-    store_data_rx_control.interval = store_data_read_interval;
 
     result = ioctl(
       fd, EP1_CF02A_IOCTL_SET_STORE_DATA_RX_CONTROL, &store_data_rx_control);
@@ -230,7 +366,10 @@ set_store_data_rx_control(int fd, const char* id, bool start)
 }
 
 int
-read_store_data(int fd, const char* id, unsigned long long can_frame_count)
+read_store_data(int fd,
+                const char* id,
+                unsigned long long can_frame_count,
+                bool is_check_mode)
 {
     int result;
     bool error = false;
@@ -239,6 +378,9 @@ read_store_data(int fd, const char* id, unsigned long long can_frame_count)
     ssize_t total_rsize = 0;
     ssize_t total_can_frame_size = can_frame_count * EP1_CF02A_CAN_PACKET_SIZE;
     size_t can_count = 1;
+
+    /* Reset trackers for new read session */
+    reset_trackers();
 
     /* Start */
     start = true;
@@ -275,16 +417,14 @@ read_store_data(int fd, const char* id, unsigned long long can_frame_count)
                 result = get_store_data_rx_control(fd, &store_data_rx_control);
                 if (!store_data_rx_control.start &&
                     total_rsize != total_can_frame_size) {
-                    printf("read error (%ld / %ld frames). Possibly driver "
-                           "buffer full. Please increase store data receive "
-                           "interval or reduce processing load.\n",
+                    printf("read error (%ld / %ld frames)\n",
                            total_rsize,
                            total_can_frame_size);
                     error = true;
                     goto stop;
                 }
             }
-            break;
+            continue;
         }
 
         total_rsize += rsize;
@@ -306,8 +446,70 @@ read_store_data(int fd, const char* id, unsigned long long can_frame_count)
             frame.flags = buf[pos + 13];
             memcpy(frame.data, &buf[pos + 14], CANFD_MAX_DLEN);
 
-            printf("%ld: ", can_count);
-            print_canfd_frame(&timestamp, &frame);
+            /* Check data increment only in check mode */
+            if (is_check_mode) {
+                can_data_tracker_t* tracker =
+                  find_or_create_tracker(frame.can_id);
+                if (tracker == NULL) {
+                    printf("Error: Too many CAN IDs (max %d supported)\n",
+                           MAX_CAN_IDS);
+                    total_error_frames++;
+                }
+                if (frame.len != 8) {
+                    printf("Error: CAN frame data length must be 8 bytes (got "
+                           "%d bytes for CAN ID %x)\n",
+                           frame.len,
+                           frame.can_id);
+                    total_error_frames++;
+                }
+                if (tracker != NULL && frame.len == 8) {
+                    uint64_t current_data = parse_u64_be(frame.data, frame.len);
+
+                    if (tracker->has_data) {
+                        if (current_data > tracker->last_data + 1) {
+                            uint64_t lost_frames =
+                              current_data - tracker->last_data - 1;
+                            total_lost_frames += lost_frames;
+                            printf(
+                              "[%ld.%09ld] data mismatch for CAN ID %x: "
+                              "expected %lu, got %lu, lost frame count %lu\n",
+                              timestamp.tv_sec,
+                              timestamp.tv_nsec,
+                              frame.can_id,
+                              tracker->last_data + 1,
+                              current_data,
+                              lost_frames);
+                        } else if (current_data < tracker->last_data + 1) {
+                            uint64_t rewind_count =
+                              tracker->last_data - current_data;
+                            printf(
+                              "[%ld.%09ld] timestamp rewind for CAN ID %x: "
+                              "expected %lu, got %lu, rewind count %lu\n",
+                              timestamp.tv_sec,
+                              timestamp.tv_nsec,
+                              frame.can_id,
+                              tracker->last_data + 1,
+                              current_data,
+                              rewind_count);
+                        }
+                    }
+
+                    /* Update last_data if current_data is valid */
+                    if (tracker->has_data) {
+                        if (current_data >= tracker->last_data + 1) {
+                            tracker->last_data = current_data;
+                        }
+                    } else {
+                        tracker->last_data = current_data;
+                    }
+                    tracker->has_data = true;
+                }
+            }
+
+            if (!is_check_mode) {
+                printf("%ld: ", can_count);
+                print_canfd_frame(&timestamp, &frame);
+            }
             can_count++;
         }
     }
@@ -337,6 +539,36 @@ stop:
         }
     }
 
+    if (is_check_mode) {
+        /* Store result for this store data */
+        strncpy(store_results[processed_count].id,
+                id,
+                EP1_CF02A_STORE_DATA_ID_MAX_LENGTH);
+        store_results[processed_count].lost_frames = total_lost_frames;
+        store_results[processed_count].error_frames = total_error_frames;
+        store_results[processed_count].has_data_loss = (total_lost_frames > 0);
+        store_results[processed_count].has_error_frames =
+          (total_error_frames > 0);
+        processed_count++;
+
+        printf("                 check result: ");
+        if (total_lost_frames > 0 || total_error_frames > 0) {
+            if (total_lost_frames > 0) {
+                printf("DATA LOSS detected (%lu lost frames)",
+                       total_lost_frames);
+            }
+            if (total_error_frames > 0) {
+                if (total_lost_frames > 0)
+                    printf(", ");
+                printf("ERROR FRAMES detected (%lu error frames)",
+                       total_error_frames);
+            }
+            printf("\n");
+        } else {
+            printf("OK (no data loss, no error frames)\n");
+        }
+    }
+
     return error ? RESULT_Failure : RESULT_Success;
 }
 
@@ -348,17 +580,22 @@ main(int argc, char* argv[])
     int fd;
     char* devname = NULL;
     bool is_read_store_data = false;
+    bool is_check_mode = false;
     int result;
     int n = 0;
 
     /*** Handle options ***/
     while (n >= 0) {
-        n = getopt(argc, argv, "f:rhv");
+        n = getopt(argc, argv, "f:rchv");
         switch (n) {
         case 'f':
             devname = optarg;
             break;
         case 'r':
+            is_read_store_data = true;
+            break;
+        case 'c':
+            is_check_mode = true;
             is_read_store_data = true;
             break;
         case 'h':
@@ -461,13 +698,27 @@ main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    if (store_data_id_list.count == 0) {
+    store_data_count = store_data_id_list.count;
+
+    if (store_data_count == 0) {
         printf("store data id list is empty\n");
         close(fd);
         return EXIT_SUCCESS;
     }
 
-    for (unsigned int i = 0; i < store_data_id_list.count; i++) {
+    /* Allocate memory for store results based on actual count */
+    if (is_check_mode) {
+        processed_count = 0;
+        store_results = malloc(store_data_count * sizeof(store_data_result_t));
+        if (store_results == NULL) {
+            printf("Memory allocation failed\n");
+            free_store_data_id_list(&store_data_id_list);
+            close(fd);
+            return EXIT_FAILURE;
+        }
+    }
+
+    for (int i = 0; i < store_data_count; i++) {
         ep1_cf02a_ioctl_get_store_data_meta_t store_data_meta = { 0 };
 
         result = get_store_data_meta(
@@ -526,7 +777,8 @@ main(int argc, char* argv[])
 
             result = read_store_data(fd,
                                      store_data_id_list.id_list[i],
-                                     store_data_meta.can_frame_count);
+                                     store_data_meta.can_frame_count,
+                                     is_check_mode);
             if (result != RESULT_Success) {
                 printf("read_store_data().. Error, <errno:%d> devname=%s, "
                        "store_data_id=%.*s\n",
@@ -542,8 +794,21 @@ main(int argc, char* argv[])
         }
     }
 
+    print_summary(is_check_mode);
+
+    /* Check for errors in check mode and return failure if detected */
+    bool has_any_errors = false;
+    if (is_check_mode && store_results != NULL && processed_count > 0) {
+        has_any_errors = has_errors_or_losses(NULL, NULL);
+    }
+
+    if (store_results != NULL) {
+        free(store_results);
+        store_results = NULL;
+    }
+
     free_store_data_id_list(&store_data_id_list);
     close(fd);
 
-    return EXIT_SUCCESS;
+    return has_any_errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }

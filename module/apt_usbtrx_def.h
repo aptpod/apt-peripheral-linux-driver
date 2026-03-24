@@ -187,6 +187,7 @@ struct apt_usbtrx_dev_s {
 	struct semaphore send_msg_sem; /*!< */
 	struct semaphore tx_usb_transfer_sem; /*!< */
 	apt_usbtrx_ringbuffer_t tx_data; /*!< */
+	atomic_t tx_data_clear_requested; /*!< */
 	unsigned long tx_transfer_expired; /*!< */
 	int tx_transfer_max_token; /*!< */
 	int tx_transfer_token; /*!< */
@@ -215,6 +216,11 @@ typedef struct apt_usbtrx_dev_s apt_usbtrx_dev_t;
  */
 #define to_apt_usbtrx_dev(d) container_of(d, apt_usbtrx_dev_t, kref)
 void apt_usbtrx_delete(struct kref *kref);
+
+/*!
+ * @brief check if device is in DFU mode
+ */
+bool apt_usbtrx_is_dfu(struct usb_interface *intf);
 
 /*!
  * @brief get unique data

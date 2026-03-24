@@ -15,7 +15,7 @@
 #include <linux/sched.h>
 #endif
 
-#include "../ap_ct2a/ap_ct2a_cmd.h" /* apt_usbtrx_reset_can_summary() */
+#include "../apt_usbtrx_fops.h" /* apt_usbtrx_write_tx_rb() */
 #include "ep1_cf02a_fops.h"
 #include "ep1_cf02a_cmd_def.h"
 #include "ep1_cf02a_cmd.h"
@@ -806,9 +806,7 @@ static long ep1_cf02a_ioctl_get_tx_rx_control(apt_usbtrx_dev_t *dev, unsigned lo
 static long ep1_cf02a_ioctl_set_tx_rx_control(apt_usbtrx_dev_t *dev, unsigned long arg)
 {
 	ep1_cf02a_ioctl_set_tx_rx_control_t param;
-	ep1_cf02a_msg_set_tx_rx_control_t control;
 	int result;
-	bool success;
 
 	result = copy_from_user(&param, (void __user *)arg, sizeof(ep1_cf02a_ioctl_set_tx_rx_control_t));
 	if (result != 0) {
@@ -816,50 +814,18 @@ static long ep1_cf02a_ioctl_set_tx_rx_control(apt_usbtrx_dev_t *dev, unsigned lo
 		return -EFAULT;
 	}
 
-	control.start = param.start;
-
-	if (control.start) {
-		result = apt_usbtrx_ringbuffer_clear(&dev->rx_data);
+	if (param.start) {
+		result = ep1_cf02a_start_can_interface(dev);
 		if (result != RESULT_Success) {
-			EMSG("apt_usbtrx_ringbuffer_clear().. Error");
+			EMSG("ep1_cf02a_start_can_interface().. Error");
 			return -EIO;
 		}
-	}
-
-	/* wait is added to ensure that the written CAN frame is transmitted. */
-	if (!control.start) {
-		msleep(10);
-	}
-
-	result = ep1_cf02a_set_tx_rx_control(dev, &control, &success);
-	if (result != RESULT_Success) {
-		EMSG("ep1_cf02a_set_tx_rx_control().. Error");
-		return -EIO;
-	}
-	if (success != true) {
-		EMSG("ep1_cf02a_set_tx_rx_control().. Error, Exec failed");
-		return -EIO;
-	}
-
-	return 0;
-}
-
-/*!
- * @brief ioctl - reset can summary
- */
-static long ep1_cf02a_ioctl_reset_can_summary(apt_usbtrx_dev_t *dev, unsigned long arg)
-{
-	int result;
-	bool success;
-
-	result = apt_usbtrx_reset_can_summary(dev, &success);
-	if (result != RESULT_Success) {
-		EMSG("apt_usbtrx_reset_can_summary().. Error");
-		return -EIO;
-	}
-	if (success != true) {
-		EMSG("apt_usbtrx_reset_can_summary().. Error, Exec failed");
-		return -EIO;
+	} else {
+		result = ep1_cf02a_stop_can_interface(dev);
+		if (result != RESULT_Success) {
+			EMSG("ep1_cf02a_stop_can_interface().. Error");
+			return -EIO;
+		}
 	}
 
 	return 0;
@@ -1329,7 +1295,6 @@ static long ep1_cf02a_ioctl_get_store_data_rx_control(apt_usbtrx_dev_t *dev, uns
 
 	memcpy(param.id, control.id, sizeof(param.id));
 	param.start = control.start;
-	param.interval = control.interval;
 
 	result = copy_to_user((void __user *)arg, &param, sizeof(ep1_cf02a_ioctl_get_store_data_rx_control_t));
 	if (result != 0) {
@@ -1360,7 +1325,7 @@ static long ep1_cf02a_ioctl_set_store_data_rx_control(apt_usbtrx_dev_t *dev, uns
 
 	memcpy(control.id, param.id, sizeof(control.id));
 	control.start = param.start;
-	control.interval = param.interval;
+	control.can_frame_count_per_request = unique_data->can_frame_count_per_request;
 
 	if (control.start) {
 		result = apt_usbtrx_ringbuffer_clear(&unique_data->rx_store_data);
@@ -1368,6 +1333,9 @@ static long ep1_cf02a_ioctl_set_store_data_rx_control(apt_usbtrx_dev_t *dev, uns
 			EMSG("apt_usbtrx_ringbuffer_clear().. Error");
 			return -EIO;
 		}
+
+		atomic_set(&unique_data->received_store_data_size, 0);
+		unique_data->notify_store_data_recv_can_frame_complete = false;
 	}
 
 	result = ep1_cf02a_set_store_data_rx_control(dev, &control, &success);
@@ -1390,13 +1358,25 @@ static bool ep1_cf02a_rx_store_data_is_read_enable(apt_usbtrx_dev_t *dev)
 {
 	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
 	bool onclosing;
+	size_t received_frames;
+	size_t expected_frames;
 
 	onclosing = atomic_read(&dev->onclosing);
 	if (onclosing == true) {
 		return true;
 	}
 
-	if (apt_usbtrx_ringbuffer_is_empty(&unique_data->rx_store_data) != true) {
+	received_frames = (size_t)atomic_read(&unique_data->received_store_data_size) /
+			  sizeof(ep1_cf02a_payload_notify_recv_can_frame_t);
+	expected_frames = unique_data->can_frame_count_per_request;
+	if (received_frames >= expected_frames) {
+		DMSG("rx_store_data is read enable, received_frames:%zu, expected_frames:%zu", received_frames,
+		     expected_frames);
+		return true;
+	}
+
+	if (unique_data->notify_store_data_recv_can_frame_complete == true) {
+		DMSG("rx_store_data is read enable, notify_store_data_recv_can_frame_complete is true");
 		return true;
 	}
 
@@ -1413,6 +1393,7 @@ static long ep1_cf02a_ioctl_read_store_data(apt_usbtrx_dev_t *dev, unsigned long
 	ep1_cf02a_ioctl_read_store_data_t param;
 	size_t buffer_size;
 	int result;
+	bool success;
 	ssize_t rsize;
 	bool onopening;
 	bool onclosing;
@@ -1480,6 +1461,23 @@ static long ep1_cf02a_ioctl_read_store_data(apt_usbtrx_dev_t *dev, unsigned long
 	if (result != 0) {
 		EMSG("copy_to_user().. Error");
 		return -EFAULT;
+	}
+
+	/* request notify store data receive CAN frame, if all received request store data frames are read */
+	if (unique_data->notify_store_data_recv_can_frame_complete == false &&
+	    apt_usbtrx_ringbuffer_is_empty(&unique_data->rx_store_data) == true) {
+		/* Reset received store data size */
+		atomic_set(&unique_data->received_store_data_size, 0);
+
+		result = ep1_cf02a_request_notify_recv_can_frame(dev, &success);
+		if (result != RESULT_Success) {
+			EMSG("ep1_cf02a_request_notify_recv_can_frame().. Error");
+			return -EIO;
+		}
+		if (success != true) {
+			EMSG("ep1_cf02a_request_notify_recv_can_frame().. Error, Exec failed");
+			return -EIO;
+		}
 	}
 
 	return rsize;
@@ -1595,6 +1593,63 @@ static long ep1_cf02a_ioctl_set_store_enable(apt_usbtrx_dev_t *dev, unsigned lon
 }
 
 /*!
+ * @brief ioctl - get store max duration
+ */
+static long ep1_cf02a_ioctl_get_store_max_duration(apt_usbtrx_dev_t *dev, unsigned long arg)
+{
+	ep1_cf02a_ioctl_get_store_max_duration_t param;
+	ep1_cf02a_msg_get_store_max_duration_t max_duration;
+	int result;
+
+	result = ep1_cf02a_get_store_max_duration(dev, &max_duration);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_get_store_max_duration().. Error");
+		return -EIO;
+	}
+
+	param.max_duration = max_duration.max_duration;
+
+	result = copy_to_user((void __user *)arg, &param, sizeof(ep1_cf02a_ioctl_get_store_max_duration_t));
+	if (result != 0) {
+		EMSG("copy_to_user().. Error");
+		return -EFAULT;
+	}
+
+	return 0;
+}
+
+/*!
+ * @brief ioctl - set store max duration
+ */
+static long ep1_cf02a_ioctl_set_store_max_duration(apt_usbtrx_dev_t *dev, unsigned long arg)
+{
+	ep1_cf02a_ioctl_set_store_max_duration_t param;
+	ep1_cf02a_msg_set_store_max_duration_t max_duration;
+	int result;
+	bool success;
+
+	result = copy_from_user(&param, (void __user *)arg, sizeof(ep1_cf02a_ioctl_set_store_max_duration_t));
+	if (result != 0) {
+		EMSG("copy_from_user().. Error");
+		return -EFAULT;
+	}
+
+	max_duration.max_duration = param.max_duration;
+
+	result = ep1_cf02a_set_store_max_duration(dev, &max_duration, &success);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_set_store_max_duration().. Error");
+		return -EIO;
+	}
+	if (success != true) {
+		EMSG("ep1_cf02a_set_store_max_duration().. Error, Exec failed");
+		return -EIO;
+	}
+
+	return 0;
+}
+
+/*!
  * @brief ioctl
  */
 long ep1_cf02a_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
@@ -1634,8 +1689,6 @@ long ep1_cf02a_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return ep1_cf02a_ioctl_get_tx_rx_control(dev, arg);
 	case EP1_CF02A_IOCTL_SET_TX_RX_CONTROL:
 		return ep1_cf02a_ioctl_set_tx_rx_control(dev, arg);
-	case EP1_CF02A_IOCTL_RESET_CAN_SUMMARY:
-		return ep1_cf02a_ioctl_reset_can_summary(dev, arg);
 	case EP1_CF02A_IOCTL_GET_DEVICE_TIMESTAMP_RESET_TIME:
 		return ep1_cf02a_ioctl_get_device_timestamp_reset_time(dev, arg);
 	case EP1_CF02A_IOCTL_SET_HOST_TIMESTAMP_RESET_TIME:
@@ -1666,6 +1719,10 @@ long ep1_cf02a_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return ep1_cf02a_ioctl_get_store_enable(dev, arg);
 	case EP1_CF02A_IOCTL_SET_STORE_ENABLE:
 		return ep1_cf02a_ioctl_set_store_enable(dev, arg);
+	case EP1_CF02A_IOCTL_GET_STORE_MAX_DURATION:
+		return ep1_cf02a_ioctl_get_store_max_duration(dev, arg);
+	case EP1_CF02A_IOCTL_SET_STORE_MAX_DURATION:
+		return ep1_cf02a_ioctl_set_store_max_duration(dev, arg);
 	default:
 		EMSG("not supported, <ioctl:0x%02x>", cmd);
 		return -EFAULT;
@@ -1698,6 +1755,18 @@ int ep1_cf02a_is_device_start(apt_usbtrx_dev_t *dev, bool *start)
  */
 int ep1_cf02a_open(apt_usbtrx_dev_t *dev)
 {
+	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
+	int if_type = atomic_read(&unique_data->if_type);
+
+	/* Multiple file openings are allowed for reading of store data, */
+	/* But simultaneous use with SocketCAN is prohibited. */
+	if (if_type == EP1_CF02A_IF_TYPE_NET) {
+		EMSG("Device is already in use by netdev");
+		return -EBUSY;
+	}
+
+	atomic_inc(&unique_data->file_open_count);
+	atomic_set(&unique_data->if_type, EP1_CF02A_IF_TYPE_FILE);
 	return 0;
 }
 
@@ -1706,5 +1775,539 @@ int ep1_cf02a_open(apt_usbtrx_dev_t *dev)
  */
 int ep1_cf02a_close(apt_usbtrx_dev_t *dev)
 {
+	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
+
+	atomic_dec(&unique_data->file_open_count);
+
+	if (atomic_read(&unique_data->file_open_count) == 0) {
+		atomic_set(&unique_data->if_type, EP1_CF02A_IF_TYPE_NONE);
+	}
 	return 0;
 }
+
+/*!
+ * @brief start CAN interface
+ */
+int ep1_cf02a_start_can_interface(apt_usbtrx_dev_t *dev)
+{
+	ep1_cf02a_msg_set_tx_rx_control_t control;
+	int result;
+	bool success;
+
+	result = apt_usbtrx_ringbuffer_clear(&dev->rx_data);
+	if (result != RESULT_Success) {
+		EMSG("apt_usbtrx_ringbuffer_clear().. Error");
+		return RESULT_Failure;
+	}
+
+	control.start = true;
+	result = ep1_cf02a_set_tx_rx_control(dev, &control, &success);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_set_tx_rx_control().. Error");
+		return RESULT_Failure;
+	}
+	if (success != true) {
+		EMSG("ep1_cf02a_set_tx_rx_control().. Error, Exec failed");
+		return RESULT_Failure;
+	}
+
+	return RESULT_Success;
+}
+
+/*!
+ * @brief stop CAN interface
+ */
+int ep1_cf02a_stop_can_interface(apt_usbtrx_dev_t *dev)
+{
+	ep1_cf02a_msg_set_tx_rx_control_t control;
+	int result;
+	bool success;
+
+	atomic_set(&dev->tx_data_clear_requested, true);
+
+	while (1) {
+		wake_up_interruptible(&dev->tx_data.wq);
+
+		if (atomic_read(&dev->tx_data_clear_requested) == true) {
+			msleep(100);
+			continue;
+		}
+		if (down_trylock(&dev->tx_usb_transfer_sem) == 0) {
+			up(&dev->tx_usb_transfer_sem);
+			break;
+		}
+		msleep(100);
+	}
+
+	control.start = false;
+	result = ep1_cf02a_set_tx_rx_control(dev, &control, &success);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_set_tx_rx_control().. Error");
+		return RESULT_Failure;
+	}
+	if (success != true) {
+		EMSG("ep1_cf02a_set_tx_rx_control().. Error, Exec failed");
+		return RESULT_Failure;
+	}
+
+	return RESULT_Success;
+}
+
+#ifdef SUPPORT_NETDEV
+
+/*!
+ * @brief set bittiming (netdev)
+ */
+int ep1_cf02a_netdev_set_bittiming(struct net_device *netdev)
+{
+	ep1_cf02a_candev_t *candev = netdev_priv(netdev);
+	apt_usbtrx_dev_t *dev = candev->dev;
+	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
+	ep1_cf02a_msg_set_bit_timing_t timing;
+	int result;
+	bool success;
+
+	result = ep1_cf02a_calc_bit_timing(dev, candev->can.bittiming.bitrate, candev->can.bittiming.sample_point,
+					   unique_data->bittiming_const, (ep1_cf02a_msg_bit_timing_t *)&timing);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_calc_bit_timing().. Error");
+		return -EINVAL;
+	}
+
+	result = ep1_cf02a_set_bit_timing(dev, &timing, &success);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_set_bit_timing().. Error");
+		return -EIO;
+	}
+	if (success != true) {
+		EMSG("ep1_cf02a_set_bit_timing().. Error, Exec failed");
+		return -EIO;
+	}
+
+	return 0;
+}
+
+/*!
+ * @brief set data bittiming (netdev)
+ */
+int ep1_cf02a_netdev_set_data_bittiming(struct net_device *netdev)
+{
+	ep1_cf02a_candev_t *candev = netdev_priv(netdev);
+	apt_usbtrx_dev_t *dev = candev->dev;
+	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
+	ep1_cf02a_msg_set_data_bit_timing_t timing;
+	int result;
+	bool success;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)
+	struct can_bittiming *data_bittiming = &candev->can.fd.data_bittiming;
+#else
+	struct can_bittiming *data_bittiming = &candev->can.data_bittiming;
+#endif
+
+	result = ep1_cf02a_calc_bit_timing(dev, data_bittiming->bitrate, data_bittiming->sample_point,
+					   unique_data->data_bittiming_const, (ep1_cf02a_msg_bit_timing_t *)&timing);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_calc_bit_timing().. Error");
+		return -EINVAL;
+	}
+
+	result = ep1_cf02a_set_data_bit_timing(dev, &timing, &success);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_set_data_bit_timing().. Error");
+		return -EIO;
+	}
+	if (success != true) {
+		EMSG("ep1_cf02a_set_data_bit_timing().. Error, Exec failed");
+		return -EIO;
+	}
+
+	return 0;
+}
+
+/*!
+ * @brief apply control modes to hardware
+ */
+static int ep1_cf02a_apply_control_modes(apt_usbtrx_dev_t *dev, u32 ctrlmode)
+{
+	ep1_cf02a_msg_set_silent_mode_t silent_mode;
+	ep1_cf02a_msg_set_fd_mode_t fd_mode;
+	bool success;
+	int result;
+
+	silent_mode.silent = ctrlmode & CAN_CTRLMODE_LISTENONLY;
+	result = ep1_cf02a_set_silent_mode(dev, &silent_mode, &success);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_set_silent_mode().. Error");
+		return -EIO;
+	}
+	if (!success) {
+		EMSG("ep1_cf02a_set_silent_mode().. Failed");
+		return -EIO;
+	}
+
+	fd_mode.fd = ctrlmode & CAN_CTRLMODE_FD;
+	result = ep1_cf02a_set_fd_mode(dev, &fd_mode, &success);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_set_fd_mode().. Error");
+		return -EIO;
+	}
+	if (!success) {
+		EMSG("ep1_cf02a_set_fd_mode().. Failed");
+		return -EIO;
+	}
+
+	if (ctrlmode & CAN_CTRLMODE_FD) {
+		ep1_cf02a_msg_set_iso_mode_t iso_mode;
+
+		iso_mode.non_iso_mode = ctrlmode & CAN_CTRLMODE_FD_NON_ISO;
+		result = ep1_cf02a_set_iso_mode(dev, &iso_mode, &success);
+		if (result != RESULT_Success) {
+			EMSG("ep1_cf02a_set_iso_mode().. Error");
+			return -EIO;
+		}
+		if (!success) {
+			EMSG("ep1_cf02a_set_iso_mode().. Failed");
+			return -EIO;
+		}
+	}
+
+	return 0;
+}
+
+/*!
+ * @brief start interface
+ */
+static int ep1_cf02a_netdev_start(apt_usbtrx_dev_t *dev)
+{
+	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
+	ep1_cf02a_candev_t *candev = netdev_priv(unique_data->netdev);
+	int result;
+	ep1_cf02a_msg_get_device_timestamp_reset_time_t time;
+
+	result = candev->can.do_set_bittiming(unique_data->netdev);
+	if (result != 0) {
+		EMSG("can.do_set_bittiming().. Error");
+		return -EIO;
+	}
+
+	if (candev->can.ctrlmode & CAN_CTRLMODE_FD) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)
+		result = candev->can.fd.do_set_data_bittiming(unique_data->netdev);
+#else
+		result = candev->can.do_set_data_bittiming(unique_data->netdev);
+#endif
+		if (result != 0) {
+			EMSG("can.do_set_data_bittiming().. Error");
+			return -EIO;
+		}
+	}
+
+	result = ep1_cf02a_apply_control_modes(dev, candev->can.ctrlmode);
+	if (result != 0) {
+		EMSG("ep1_cf02a_apply_control_modes().. Error");
+		return result;
+	}
+
+	result = ep1_cf02a_get_device_timestamp_reset_time(dev, &time);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_get_device_timestamp_reset_time().. Error");
+		return -EIO;
+	}
+	apt_usbtrx_convert_timestamp_to_timespec64(&time.ts, &candev->reset_ts);
+
+	result = ep1_cf02a_start_can_interface(dev);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_start_can_interface().. Error");
+		return -EIO;
+	}
+
+	candev->can.state = CAN_STATE_ERROR_ACTIVE;
+	atomic_set(&unique_data->if_type, EP1_CF02A_IF_TYPE_NET);
+
+	return 0;
+}
+
+/*!
+ * @brief open (netdev operation)
+ */
+int ep1_cf02a_netdev_open(struct net_device *netdev)
+{
+	ep1_cf02a_candev_t *candev = netdev_priv(netdev);
+	apt_usbtrx_dev_t *dev = candev->dev;
+	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
+	int if_type = atomic_read(&unique_data->if_type);
+	int err;
+
+	if (if_type != EP1_CF02A_IF_TYPE_NONE) {
+		EMSG("Device is already in use");
+		return -EBUSY;
+	}
+
+	/* common open */
+	err = open_candev(netdev);
+	if (err) {
+		netdev_err(netdev, "candev open failed: %d\n", err);
+		return err;
+	}
+
+	/* finally start device */
+	err = ep1_cf02a_netdev_start(dev);
+	if (err) {
+		netdev_err(netdev, "couldn't start device: %d\n", err);
+		close_candev(netdev);
+		return err;
+	}
+
+	netif_start_queue(netdev);
+
+	/* Start periodic statistics polling */
+	schedule_delayed_work(&candev->statistics_work, HZ);
+
+	return 0;
+}
+
+/*!
+ * @brief close (netdev operation)
+ */
+int ep1_cf02a_netdev_close(struct net_device *netdev)
+{
+	ep1_cf02a_candev_t *candev = netdev_priv(netdev);
+	apt_usbtrx_dev_t *dev = candev->dev;
+	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
+	int result;
+
+	/* Stop periodic statistics polling */
+	cancel_delayed_work_sync(&candev->statistics_work);
+
+	result = ep1_cf02a_stop_can_interface(dev);
+	if (result != RESULT_Success) {
+		EMSG("ep1_cf02a_stop_can_interface().. Error");
+		return -EIO;
+	}
+
+	netif_stop_queue(netdev);
+	close_candev(netdev);
+
+	candev->can.state = CAN_STATE_STOPPED;
+	atomic_set(&unique_data->if_type, EP1_CF02A_IF_TYPE_NONE);
+
+	return 0;
+}
+
+/*!
+ * @brief start transmit (netdev operation)
+ */
+netdev_tx_t ep1_cf02a_netdev_start_xmit(struct sk_buff *skb, struct net_device *netdev)
+{
+	ep1_cf02a_candev_t *candev = netdev_priv(netdev);
+	apt_usbtrx_dev_t *dev = candev->dev;
+	ep1_cf02a_payload_send_can_frame_t send_cf;
+	int tx_data_size;
+	int result;
+	bool silent = candev->can.ctrlmode & CAN_CTRLMODE_LISTENONLY ? true : false;
+	bool is_canfd = can_is_canfd_skb(skb);
+
+	if (silent) {
+		return NETDEV_TX_OK;
+	}
+
+	if (can_dropped_invalid_skb(netdev, skb)) {
+		return NETDEV_TX_OK;
+	}
+
+	memset(&send_cf, 0, sizeof(send_cf));
+
+	if (is_canfd) {
+		struct canfd_frame *cfd = (struct canfd_frame *)skb->data;
+
+		send_cf.id[0] = cfd->can_id & 0xFF;
+		send_cf.id[1] = (cfd->can_id & 0xFF00) >> 8;
+		send_cf.id[2] = (cfd->can_id & 0xFF0000) >> 16;
+		send_cf.id[3] = (cfd->can_id & 0xFF000000) >> 24;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+		send_cf.dlc = can_fd_len2dlc(cfd->len);
+#else
+		send_cf.dlc = can_len2dlc(cfd->len);
+#endif
+		send_cf.flags = EP1_CF02A_CAN_FRAME_FLAG_FDF;
+
+		if (cfd->flags & CANFD_BRS) {
+			send_cf.flags |= EP1_CF02A_CAN_FRAME_FLAG_BRS;
+		}
+		if (cfd->flags & CANFD_ESI) {
+			send_cf.flags |= EP1_CF02A_CAN_FRAME_FLAG_ESI;
+		}
+
+		memcpy(send_cf.data, cfd->data, cfd->len);
+		tx_data_size = cfd->len;
+	} else {
+		struct can_frame *cf = (struct can_frame *)skb->data;
+
+		send_cf.id[0] = cf->can_id & 0xFF;
+		send_cf.id[1] = (cf->can_id & 0xFF00) >> 8;
+		send_cf.id[2] = (cf->can_id & 0xFF0000) >> 16;
+		send_cf.id[3] = (cf->can_id & 0xFF000000) >> 24;
+
+		send_cf.dlc = cf->can_dlc;
+		send_cf.flags = 0;
+
+		memcpy(send_cf.data, cf->data, cf->can_dlc);
+		tx_data_size = cf->can_dlc;
+	}
+
+	candev->tx_data_size = tx_data_size;
+
+	netif_stop_queue(netdev);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
+	can_put_echo_skb(skb, netdev, 0, 0);
+#else
+	can_put_echo_skb(skb, netdev, 0);
+#endif
+
+	result = apt_usbtrx_write_tx_rb(dev, &send_cf, sizeof(send_cf));
+	if (result < 0) {
+		EMSG("apt_usbtrx_write_tx_rb().. Error");
+		return NETDEV_TX_BUSY;
+	}
+
+	return NETDEV_TX_OK;
+}
+
+/*!
+ * @brief set mode (netdev)
+ */
+int ep1_cf02a_netdev_set_mode(struct net_device *netdev, enum can_mode mode)
+{
+	ep1_cf02a_candev_t *candev = netdev_priv(netdev);
+	apt_usbtrx_dev_t *dev = candev->dev;
+	int result;
+
+	switch (mode) {
+	case CAN_MODE_START:
+		result = ep1_cf02a_stop_can_interface(dev);
+		if (result != RESULT_Success) {
+			EMSG("ep1_cf02a_stop_can_interface().. Error");
+			return -EIO;
+		}
+
+		result = ep1_cf02a_netdev_start(dev);
+		if (result) {
+			netdev_err(netdev, "couldn't start device: %d\n", result);
+			return result;
+		}
+		break;
+
+	default:
+		return -EOPNOTSUPP;
+	}
+
+	return 0;
+}
+
+/*!
+ * @brief statistics work function (periodic polling)
+ */
+void ep1_cf02a_statistics_work_func(struct work_struct *work)
+{
+	ep1_cf02a_candev_t *candev = container_of(work, ep1_cf02a_candev_t, statistics_work.work);
+	apt_usbtrx_dev_t *dev = candev->dev;
+	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
+	struct net_device *netdev = unique_data->netdev;
+	ep1_cf02a_msg_get_can_statistics_t statistics;
+	int result;
+	bool on_terminating;
+
+	if (!netdev) {
+		return;
+	}
+
+	on_terminating = atomic_read(&unique_data->on_terminating);
+	if (on_terminating == true) {
+		return;
+	}
+
+	result = ep1_cf02a_get_can_statistics(dev, &statistics);
+	if (result != RESULT_Success) {
+		/* Keep current state on error */
+		goto reschedule;
+	}
+
+	/* Update CAN state based on statistics */
+	switch (statistics.can_state) {
+	case 0:
+		candev->can.state = CAN_STATE_ERROR_ACTIVE;
+		break;
+	case 1:
+		candev->can.state = CAN_STATE_ERROR_WARNING;
+		break;
+	case 2:
+		candev->can.state = CAN_STATE_ERROR_PASSIVE;
+		break;
+	case 3:
+		candev->can.state = CAN_STATE_BUS_OFF;
+		break;
+	default:
+		candev->can.state = CAN_STATE_ERROR_ACTIVE;
+		break;
+	}
+
+	/* Update FW rx_dropped statistics */
+	atomic64_set(&candev->fw_rx_dropped, statistics.rx_dropped);
+
+reschedule:
+	/* Reschedule for next polling (1 second interval) */
+	schedule_delayed_work(&candev->statistics_work, HZ);
+}
+
+/*!
+ * @brief get state (netdev)
+ */
+int ep1_cf02a_netdev_get_state(const struct net_device *netdev, enum can_state *state)
+{
+	ep1_cf02a_candev_t *candev = netdev_priv(netdev);
+
+	/* Return cached state (updated by statistics_work) */
+	*state = candev->can.state;
+	return 0;
+}
+
+/*!
+ * @brief get stats64 (netdev operation)
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+void
+#else
+struct rtnl_link_stats64 *
+#endif
+ep1_cf02a_netdev_get_stats64(struct net_device *netdev, struct rtnl_link_stats64 *storage)
+{
+	ep1_cf02a_candev_t *candev = netdev_priv(netdev);
+	apt_usbtrx_dev_t *dev = candev->dev;
+	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
+	bool on_terminating;
+
+	on_terminating = atomic_read(&unique_data->on_terminating);
+	if (on_terminating == true) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+		return;
+#else
+		return storage;
+#endif
+	}
+
+	storage->rx_packets = atomic64_read(&candev->rx_packets);
+	storage->tx_packets = atomic64_read(&candev->tx_packets);
+	storage->rx_bytes = atomic64_read(&candev->rx_bytes);
+	storage->tx_bytes = atomic64_read(&candev->tx_bytes);
+	storage->rx_dropped += atomic64_read(&candev->fw_rx_dropped);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+	return;
+#else
+	return storage;
+#endif
+}
+#endif

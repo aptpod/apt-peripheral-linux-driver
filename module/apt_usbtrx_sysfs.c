@@ -90,6 +90,7 @@ static ssize_t apt_usbtrx_sysfs_basetime_clock_id_store(struct device *dev, stru
 
 	return count;
 }
+/* NOTE: writable attrs must be listed in conf/30-apt-usb.rules */
 static DEVICE_ATTR(basetime_clock_id, S_IWUSR | S_IRUGO, apt_usbtrx_sysfs_basetime_clock_id_show,
 		   apt_usbtrx_sysfs_basetime_clock_id_store);
 

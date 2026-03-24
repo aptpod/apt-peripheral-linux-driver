@@ -20,10 +20,6 @@ if [ -z "$devices" ]; then
 	exit 1
 fi
 
-if [ "$EUID" -ne 0 ]; then
-	echo "please run as root"
-	exit 1
-fi
 
 for device in $devices; do
 	echo "${BASETIME_CLOCK_ID}" >"/sys/$(udevadm info --query=path --name=$device)/device/basetime_clock_id"

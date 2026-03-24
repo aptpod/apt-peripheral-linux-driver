@@ -552,12 +552,10 @@ typedef struct ep1_cf02a_ioctl_get_store_data_meta_s ep1_cf02a_ioctl_get_store_d
  * struct ep1_cf02a_ioctl_store_data_rx_control_s - Store data RX control definition.
  * @id: [IN(Set)/OUT(Get)] Store data id to control.
  * @start: [IN(Set)/OUT(Get)] Start or stop sending store data.
- * @interval: [IN(Set)/OUT(Get)] Sending interval in us.
  */
 struct ep1_cf02a_ioctl_store_data_rx_control_s {
 	char id[EP1_CF02A_STORE_DATA_ID_MAX_LENGTH];
 	bool start;
-	int interval;
 };
 typedef struct ep1_cf02a_ioctl_store_data_rx_control_s ep1_cf02a_ioctl_get_store_data_rx_control_t;
 typedef struct ep1_cf02a_ioctl_store_data_rx_control_s ep1_cf02a_ioctl_set_store_data_rx_control_t;
@@ -593,6 +591,16 @@ struct ep1_cf02a_ioctl_store_enable_s {
 };
 typedef struct ep1_cf02a_ioctl_store_enable_s ep1_cf02a_ioctl_get_store_enable_t;
 typedef struct ep1_cf02a_ioctl_store_enable_s ep1_cf02a_ioctl_set_store_enable_t;
+
+/**
+ * struct ep1_cf02a_ioctl_store_max_duration_s - Store data max duration definition.
+ * @max_duration: Max duration in seconds (0 means unlimited).
+ */
+struct ep1_cf02a_ioctl_store_max_duration_s {
+	unsigned int max_duration;
+};
+typedef struct ep1_cf02a_ioctl_store_max_duration_s ep1_cf02a_ioctl_get_store_max_duration_t;
+typedef struct ep1_cf02a_ioctl_store_max_duration_s ep1_cf02a_ioctl_set_store_max_duration_t;
 
 /* ----------------------------------------------------------- */
 /* ------------------------ EP1-AG08A ------------------------ */
@@ -800,7 +808,6 @@ typedef ep1_ag08a_ioctl_analog_output_t pa_agu081_ioctl_analog_output_t;
 #define EP1_CF02A_IOCTL_SET_DATA_BIT_TIMING _IOW(APT_USBTRX_IOC_TYPE, 0x3c, ep1_cf02a_ioctl_set_data_bit_timing_t)
 #define EP1_CF02A_IOCTL_GET_TX_RX_CONTROL _IOR(APT_USBTRX_IOC_TYPE, 0x3d, ep1_cf02a_ioctl_get_tx_rx_control_t)
 #define EP1_CF02A_IOCTL_SET_TX_RX_CONTROL _IOW(APT_USBTRX_IOC_TYPE, 0x3e, ep1_cf02a_ioctl_set_tx_rx_control_t)
-#define EP1_CF02A_IOCTL_RESET_CAN_SUMMARY APT_USBTRX_IOCTL_RESET_CAN_SUMMARY
 #define EP1_CF02A_IOCTL_GET_DEVICE_TIMESTAMP_RESET_TIME                                                                \
 	_IOR(APT_USBTRX_IOC_TYPE, 0x3f, ep1_cf02a_ioctl_get_device_timestamp_reset_time_t)
 #define EP1_CF02A_IOCTL_SET_HOST_TIMESTAMP_RESET_TIME _IO(APT_USBTRX_IOC_TYPE, 0x40)
@@ -824,5 +831,7 @@ typedef ep1_ag08a_ioctl_analog_output_t pa_agu081_ioctl_analog_output_t;
 #define EP1_CF02A_IOCTL_SET_FD_MODE _IOW(APT_USBTRX_IOC_TYPE, 0x4d, ep1_cf02a_ioctl_set_fd_mode_t)
 #define EP1_CF02A_IOCTL_GET_STORE_ENABLE _IOR(APT_USBTRX_IOC_TYPE, 0x4e, ep1_cf02a_ioctl_get_store_enable_t)
 #define EP1_CF02A_IOCTL_SET_STORE_ENABLE _IOW(APT_USBTRX_IOC_TYPE, 0x4f, ep1_cf02a_ioctl_set_store_enable_t)
+#define EP1_CF02A_IOCTL_GET_STORE_MAX_DURATION _IOR(APT_USBTRX_IOC_TYPE, 0x50, ep1_cf02a_ioctl_get_store_max_duration_t)
+#define EP1_CF02A_IOCTL_SET_STORE_MAX_DURATION _IOW(APT_USBTRX_IOC_TYPE, 0x51, ep1_cf02a_ioctl_set_store_max_duration_t)
 
 #endif /* __APT_USBTRX_FOPS_DEF_H__ */

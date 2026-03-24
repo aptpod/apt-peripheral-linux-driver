@@ -37,6 +37,8 @@ help()
       "  --dsample-point <sample-point>,       Set CAN data sample point.\n");
     printf(
       "  --store <on|off>,                     Enable/disable store data.\n");
+    printf(
+      "  --store-max-duration <sec>,           Set store max duration (0=unlimited).\n");
     printf("  --help,                               Show this help text.\n");
 }
 
@@ -55,6 +57,7 @@ main(int argc, char* argv[])
     int dbitrate = 2000000;
     int dsample_point = 0;
     bool store_enable = false;
+    unsigned int store_max_duration = 300;
 
     static struct option long_options[] = {
         { "device", required_argument, NULL, 'd' },
@@ -66,13 +69,14 @@ main(int argc, char* argv[])
         { "dbitrate", required_argument, NULL, 'B' },
         { "dsample-point", required_argument, NULL, 'S' },
         { "store", required_argument, NULL, 'o' },
+        { "store-max-duration", required_argument, NULL, 'm' },
         { "help", no_argument, NULL, 'h' },
         { 0, 0, 0, 0 }
     };
 
     int opt;
     while ((opt = getopt_long(
-              argc, argv, "d:gi:b:s:f:B:S:o:h", long_options, NULL)) != -1) {
+              argc, argv, "d:gi:b:s:f:B:S:o:m:h", long_options, NULL)) != -1) {
         switch (opt) {
         case 'd':
             devpath = optarg;
@@ -100,6 +104,9 @@ main(int argc, char* argv[])
             break;
         case 'o':
             store_enable = (strcmp(optarg, "on") == 0) ? true : false;
+            break;
+        case 'm':
+            store_max_duration = atoi(optarg);
             break;
         case 'h':
             help();
@@ -186,6 +193,17 @@ main(int argc, char* argv[])
         }
         store_enable = get_store_enable.enable;
 
+        ep1_cf02a_ioctl_get_store_max_duration_t get_store_max_duration;
+        result = ioctl(fd, EP1_CF02A_IOCTL_GET_STORE_MAX_DURATION, &get_store_max_duration);
+        if (result != 0) {
+            printf("ioctl().. Error, <errno:%d> cmd=%s\n",
+                   errno,
+                   "EP1_CF02A_IOCTL_GET_STORE_MAX_DURATION");
+            close(fd);
+            return EXIT_FAILURE;
+        }
+        store_max_duration = get_store_max_duration.max_duration;
+
         printf("Current configuration:\n");
         printf("Device path: %s\n", devpath);
         printf("Silent mode: %s\n", silent_mode ? "on" : "off");
@@ -197,6 +215,8 @@ main(int argc, char* argv[])
             printf("CAN data sample point: %d\n", dsample_point);
         }
         printf("Store data: %s\n", store_enable ? "on" : "off");
+        printf("Store max duration: %u sec%s\n", store_max_duration,
+               store_max_duration == 0 ? " (unlimited)" : "");
     } else {
         /*
          * Set configuration
@@ -212,6 +232,8 @@ main(int argc, char* argv[])
             printf("CAN data sample point: %d\n", dsample_point);
         }
         printf("Store data: %s\n", store_enable ? "on" : "off");
+        printf("Store max duration: %u sec%s\n", store_max_duration,
+               store_max_duration == 0 ? " (unlimited)" : "");
 
         {
             /*
@@ -311,6 +333,23 @@ main(int argc, char* argv[])
                 printf("ioctl().. Error, <errno:%d> cmd=%s\n",
                        errno,
                        "EP1_CF02A_IOCTL_SET_STORE_ENABLE");
+                close(fd);
+                return EXIT_FAILURE;
+            }
+        }
+
+        {
+            /*
+             * Setting up Store max duration
+             */
+            ep1_cf02a_ioctl_set_store_max_duration_t set_store_max_duration;
+            set_store_max_duration.max_duration = store_max_duration;
+            result =
+              ioctl(fd, EP1_CF02A_IOCTL_SET_STORE_MAX_DURATION, &set_store_max_duration);
+            if (result != 0) {
+                printf("ioctl().. Error, <errno:%d> cmd=%s\n",
+                       errno,
+                       "EP1_CF02A_IOCTL_SET_STORE_MAX_DURATION");
                 close(fd);
                 return EXIT_FAILURE;
             }

@@ -13,7 +13,6 @@
 /*!
  * @brief unique function prototype
  */
-void ep1_cf02a_init_stats(ep1_cf02a_stats_t *stats);
 int ep1_cf02a_dispatch_msg(apt_usbtrx_dev_t *dev, u8 *data, apt_usbtrx_msg_t *msg);
 void ep1_cf02a_write_bulk_callback(struct urb *urb);
 
