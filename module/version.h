@@ -7,6 +7,6 @@
 #ifndef __APT_USBTRX_VERSION_H__
 #define __APT_USBTRX_VERSION_H__
 
-#define PRODUCT_VERSION "1.8.2"
+#define PRODUCT_VERSION "1.8.3"
 
 #endif /* __APT_USBTRX_VERSION_H__ */

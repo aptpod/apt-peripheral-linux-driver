@@ -1978,14 +1978,15 @@ static int ep1_cf02a_apply_control_modes(apt_usbtrx_dev_t *dev, u32 ctrlmode)
 /*!
  * @brief start interface
  */
-static int ep1_cf02a_netdev_start(apt_usbtrx_dev_t *dev)
+static int ep1_cf02a_netdev_start(struct net_device *netdev)
 {
+	ep1_cf02a_candev_t *candev = netdev_priv(netdev);
+	apt_usbtrx_dev_t *dev = candev->dev;
 	ep1_cf02a_unique_data_t *unique_data = get_unique_data(dev);
-	ep1_cf02a_candev_t *candev = netdev_priv(unique_data->netdev);
 	int result;
 	ep1_cf02a_msg_get_device_timestamp_reset_time_t time;
 
-	result = candev->can.do_set_bittiming(unique_data->netdev);
+	result = candev->can.do_set_bittiming(netdev);
 	if (result != 0) {
 		EMSG("can.do_set_bittiming().. Error");
 		return -EIO;
@@ -1993,9 +1994,9 @@ static int ep1_cf02a_netdev_start(apt_usbtrx_dev_t *dev)
 
 	if (candev->can.ctrlmode & CAN_CTRLMODE_FD) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)
-		result = candev->can.fd.do_set_data_bittiming(unique_data->netdev);
+		result = candev->can.fd.do_set_data_bittiming(netdev);
 #else
-		result = candev->can.do_set_data_bittiming(unique_data->netdev);
+		result = candev->can.do_set_data_bittiming(netdev);
 #endif
 		if (result != 0) {
 			EMSG("can.do_set_data_bittiming().. Error");
@@ -2052,7 +2053,7 @@ int ep1_cf02a_netdev_open(struct net_device *netdev)
 	}
 
 	/* finally start device */
-	err = ep1_cf02a_netdev_start(dev);
+	err = ep1_cf02a_netdev_start(netdev);
 	if (err) {
 		netdev_err(netdev, "couldn't start device: %d\n", err);
 		close_candev(netdev);
@@ -2193,7 +2194,7 @@ int ep1_cf02a_netdev_set_mode(struct net_device *netdev, enum can_mode mode)
 			return -EIO;
 		}
 
-		result = ep1_cf02a_netdev_start(dev);
+		result = ep1_cf02a_netdev_start(netdev);
 		if (result) {
 			netdev_err(netdev, "couldn't start device: %d\n", result);
 			return result;

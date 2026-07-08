@@ -378,13 +378,14 @@ int apt_usbtrx_unique_can_netdev_set_bittiming(struct net_device *netdev)
 /*!
  * @brief start interface
  */
-static int apt_usbtrx_unique_can_netdev_start(apt_usbtrx_dev_t *dev)
+static int apt_usbtrx_unique_can_netdev_start(struct net_device *netdev)
 {
+	apt_usbtrx_candev_t *candev = netdev_priv(netdev);
+	apt_usbtrx_dev_t *dev = candev->dev;
 	apt_usbtrx_unique_data_can_t *unique_data = get_unique_data(dev);
-	apt_usbtrx_candev_t *candev = netdev_priv(unique_data->netdev);
 	int result;
 
-	result = candev->can.do_set_bittiming(unique_data->netdev);
+	result = candev->can.do_set_bittiming(netdev);
 	if (result != 0) {
 		EMSG("can.do_set_bittiming().. Error");
 		return -EIO;
@@ -426,7 +427,7 @@ int apt_usbtrx_unique_can_netdev_open(struct net_device *netdev)
 	}
 
 	/* finally start device */
-	err = apt_usbtrx_unique_can_netdev_start(dev);
+	err = apt_usbtrx_unique_can_netdev_start(netdev);
 	if (err) {
 		netdev_err(netdev, "couldn't start device: %d\n", err);
 		close_candev(netdev);
@@ -534,7 +535,7 @@ int apt_usbtrx_unique_can_netdev_set_mode(struct net_device *netdev, enum can_mo
 			return -EIO;
 		}
 
-		result = apt_usbtrx_unique_can_netdev_start(dev);
+		result = apt_usbtrx_unique_can_netdev_start(netdev);
 		if (result) {
 			netdev_err(netdev, "couldn't start device: %d\n", result);
 			return result;

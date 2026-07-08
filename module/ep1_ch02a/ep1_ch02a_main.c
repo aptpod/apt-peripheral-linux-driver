@@ -120,14 +120,15 @@ static int ep1_ch02a_create_candev(struct usb_interface *intf, const struct usb_
 	SET_NETDEV_DEV(netdev, &intf->dev);
 	netdev->dev_id = dev->ch;
 
+	unique_data->netdev = netdev;
+
 	err = register_candev(netdev);
 	if (err) {
+		unique_data->netdev = NULL;
 		free_candev(netdev);
 		EMSG("register_candev().. Error");
 		return err;
 	}
-
-	unique_data->netdev = netdev;
 
 	netdev_info(netdev, "device %s registered\n", netdev->name);
 
