@@ -11,6 +11,7 @@
 #include <linux/completion.h>
 #include <linux/usb.h>
 #include <linux/slab.h>
+#include <linux/string.h>
 #include <linux/kthread.h>
 
 #include "version.h"
@@ -119,8 +120,7 @@ STATIC int apt_usbtrx_init_function(struct usb_interface *intf, apt_usbtrx_dev_t
 	switch (product_id) {
 	case AP_CT2A_PRODUCT_ID:
 	case AP_CT2A_DEVP_PRODUCT_ID:
-		strncpy(dev->model_name, AP_CT2A_MODEL_NAME, sizeof(dev->model_name));
-		dev->model_name[sizeof(dev->model_name) - 1] = '\0';
+		strscpy(dev->model_name, AP_CT2A_MODEL_NAME, sizeof(dev->model_name));
 		dev->device_type = APT_USBTRX_DEVICE_TYPE_CAN;
 		dev->rx_data_size = AP_CT2A_RXDATA_BUFFER_SIZE;
 		dev->unique_func = (apt_usbtrx_device_unique_function_t){
@@ -145,8 +145,7 @@ STATIC int apt_usbtrx_init_function(struct usb_interface *intf, apt_usbtrx_dev_t
 		};
 		break;
 	case EP1_CH02A_PRODUCT_ID:
-		strncpy(dev->model_name, EP1_CH02A_MODEL_NAME, sizeof(dev->model_name));
-		dev->model_name[sizeof(dev->model_name) - 1] = '\0';
+		strscpy(dev->model_name, EP1_CH02A_MODEL_NAME, sizeof(dev->model_name));
 		dev->device_type = APT_USBTRX_DEVICE_TYPE_CAN;
 		dev->rx_data_size = AP_CT2A_RXDATA_BUFFER_SIZE;
 		dev->unique_func = (apt_usbtrx_device_unique_function_t){
@@ -171,8 +170,7 @@ STATIC int apt_usbtrx_init_function(struct usb_interface *intf, apt_usbtrx_dev_t
 		};
 		break;
 	case EP1_CF02A_PRODUCT_ID:
-		strncpy(dev->model_name, EP1_CF02A_MODEL_NAME, sizeof(dev->model_name));
-		dev->model_name[sizeof(dev->model_name) - 1] = '\0';
+		strscpy(dev->model_name, EP1_CF02A_MODEL_NAME, sizeof(dev->model_name));
 		dev->device_type = APT_USBTRX_DEVICE_TYPE_CAN_FD;
 		dev->rx_data_size = EP1_CF02A_RXDATA_BUFFER_SIZE;
 		dev->unique_func = (apt_usbtrx_device_unique_function_t){
@@ -197,8 +195,7 @@ STATIC int apt_usbtrx_init_function(struct usb_interface *intf, apt_usbtrx_dev_t
 		};
 		break;
 	case EP1_AG08A_PRODUCT_ID:
-		strncpy(dev->model_name, EP1_AG08A_MODEL_NAME, sizeof(dev->model_name));
-		dev->model_name[sizeof(dev->model_name) - 1] = '\0';
+		strscpy(dev->model_name, EP1_AG08A_MODEL_NAME, sizeof(dev->model_name));
 		dev->device_type = APT_USBTRX_DEVICE_TYPE_ANALOG;
 		dev->rx_data_size = EP1_AG08A_RXDATA_BUFFER_SIZE;
 		dev->unique_func = (apt_usbtrx_device_unique_function_t){

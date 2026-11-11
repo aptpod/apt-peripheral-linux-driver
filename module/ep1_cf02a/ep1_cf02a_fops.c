@@ -5,6 +5,7 @@
 
 #include <linux/delay.h>
 #include <linux/slab.h>
+#include <linux/string.h>
 #include <linux/uaccess.h>
 #include <linux/can/netlink.h>
 
@@ -1203,7 +1204,8 @@ static long ep1_cf02a_ioctl_get_store_data_id_list(apt_usbtrx_dev_t *dev, unsign
 			return -EIO;
 		}
 
-		strncpy(id_list.id_list[i], id_res.id, EP1_CF02A_CMD_STORE_DATA_ID_MAX_LENGTH);
+		memcpy(id_list.id_list[i], id_res.id,
+		       strnlen(id_res.id, EP1_CF02A_CMD_STORE_DATA_ID_MAX_LENGTH));
 	}
 
 	result = copy_to_user((void __user *)param.id_list, id_list.id_list,
